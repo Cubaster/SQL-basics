@@ -1,1 +1,3 @@
-"# SQL-basics" 
+# SQL-basics
+
+Contain basic university assignments.
