@@ -1,0 +1,33 @@
+Zadanie 1
+SELECT id_zesp, nazwa, adres FROM zespoly z WHERE id_zesp NOT IN (SELECT id_zesp FROM pracownicy WHERE id_zesp = z.id_zesp)
+Zadanie 2
+SELECT nazwisko, placa_pod, etat FROM pracownicy p WHERE placa_pod > (SELECT AVG(placa_pod) FROM pracownicy WHERE etat = p.etat GROUP BY etat) ORDER BY placa_pod DESC
+Zadanie 3
+SELECT nazwisko, placa_pod FROM pracownicy p WHERE placa_pod >= 0.75 *( SELECT placa_pod FROM pracownicy WHERE p.id_szefa = id_prac) ORDER BY nazwisko 
+Zadanie 4
+SELECT p1.nazwisko FROM pracownicy p1 WHERE p1.etat = 'PROFESOR' AND NOT EXISTS ( SELECT p2.id_szefa FROM pracownicy p2 WHERE p2.etat = 'STAZYSTA' AND p2.id_szefa = p1.id_prac GROUP BY id_szefa)
+Zadanie 5
+SELECT nazwa, suma AS maks_suma_plac FROM zespoly z,(SELECT MAX(SUM(placa_pod)) AS suma FROM pracownicy GROUP BY id_zesp), (SELECT id_zesp, SUM(placa_pod) AS sumy FROM pracownicy GROUP BY id_zesp) p1 WHERE suma = sumy AND z.id_zesp = p1.id_zesp
+Zadanie 6
+SELECT nazwisko, placa_pod FROM pracownicy p  WHERE 3 > ( SELECT COUNT( DISTINCT p2.placa_pod) FROM pracownicy p2 WHERE p2.placa_pod > p.placa_pod) 
+Zadanie 7
+SELECT EXTRACT(YEAR FROM zatrudniony) AS ROK, COUNT(*) AS liczba FROM pracownicy GROUP BY EXTRACT(YEAR FROM zatrudniony) ORDER BY liczba DESC
+Zadanie 8
+SELECT EXTRACT(YEAR FROM zatrudniony) AS ROK, COUNT(*) AS liczba FROM pracownicy GROUP BY EXTRACT(YEAR FROM zatrudniony) HAVING COUNT(*) = (SELECT MAX(zlicz) FROM ( SELECT EXTRACT(YEAR FROM zatrudniony), COUNT(*) AS zlicz FROM pracownicy GROUP BY EXTRACT(YEAR FROM zatrudniony)))
+Zadanie 9
+(1) SELECT nazwisko, placa_pod, (placa_pod - (SELECT AVG(placa_pod) FROM pracownicy where id_zesp = p.id_zesp)) AS roznica FROM pracownicy p ORDER BY nazwisko
+(2) SELECT nazwisko, placa_pod, (placa_pod - avggr) AS roznica FROM pracownicy p1 JOIN (SELECT id_zesp, AVG(placa_pod) AS avggr FROM pracownicy GROUP BY id_zesp) p2 ON p2.id_zesp = p1.id_zesp ORDER BY nazwisko
+Zadanie 10
+SELECT nazwisko, placa_pod, (placa_pod - (SELECT AVG(placa_pod) FROM pracownicy where id_zesp = p.id_zesp)) AS roznica FROM pracownicy p WHERE (placa_pod - (SELECT AVG(placa_pod) FROM pracownicy where id_zesp = p.id_zesp))  > 0 ORDER BY nazwisko
+Zadanie 11
+SELECT nazwisko, (SELECT COUNT(*) FROM pracownicy p WHERE p.id_szefa = s.id_prac) AS podwladni FROM pracownicy s JOIN zespoly z ON s.id_zesp = z.id_zesp
+WHERE s.etat = 'PROFESOR' AND SUBSTR(z.adres, 1,8) = 'PIOTROWO' ORDER BY (SELECT COUNT(*) FROM pracownicy p WHERE p.id_szefa = s.id_prac) DESC
+Zadanie 12
+SELECT nazwa, (SELECT AVG(placa_pod) AS srednia_z FROM pracownicy p WHERE p.id_zesp = z.id_zesp) AS srednia_w_zespole, (SELECT ROUND(AVG(placa_pod), 2) AS srednia FROM pracownicy) AS srednia_ogolna,
+(CASE
+  WHEN (SELECT AVG(placa_pod) AS srednia_z FROM pracownicy p WHERE p.id_zesp = z.id_zesp) > (SELECT ROUND(AVG(placa_pod), 2) AS srednia FROM pracownicy) THEN ':)'
+  WHEN (SELECT AVG(placa_pod) AS srednia_z FROM pracownicy p WHERE p.id_zesp = z.id_zesp) < (SELECT ROUND(AVG(placa_pod), 2) AS srednia FROM pracownicy) THEN ':('
+  WHEN (SELECT AVG(placa_pod) AS srednia_z FROM pracownicy p WHERE p.id_zesp = z.id_zesp) IS NULL THEN '???'
+ END) AS nastroje FROM zespoly z  ORDER BY nazwa
+Zadanie 13
+SELECT nazwa, placa_min, placa_max FROM etaty e ORDER BY (SELECT COUNT(*) FROM pracownicy p GROUP BY etat HAVING p.etat = e.nazwa) DESC, nazwa

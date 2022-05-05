@@ -1,0 +1,127 @@
+Zadanie 1
+INSERT ALL
+INTO pracownicy(id_prac, nazwisko, etat,id_szefa, zatrudniony, placa_pod, placa_dod, id_zesp) VALUES 
+	(250, 'KOWALSKI', 'ASYSTENT', NULL, TO_DATE('01/13/2015', 'MM/DD/YYYY'), 1500, NULL, 10) 
+INTO pracownicy(id_prac, nazwisko, etat,id_szefa, zatrudniony, placa_pod, placa_dod, id_zesp) VALUES
+	(260, 'ADAMSKI', 'ASYSTENT', NULL, TO_DATE('09/10/2014', 'MM/DD/YYYY'), 1500, NULL, 10)
+INTO pracownicy(id_prac, nazwisko, etat,id_szefa, zatrudniony, placa_pod, placa_dod, id_zesp) VALUES
+	(270, 'NOWAK', 'ADIUNKT', NULL, TO_DATE('05/01/1990', 'MM/DD/YYYY'), 2050, 540, 20)
+SELECT * FROM dual;
+
+SELECT * FROM pracownicy WHERE id_prac >=250
+
+Zadanie 2
+UPDATE pracownicy p SET(p.placa_pod, p.placa_dod) = (SELECT  1.1 * placa_pod,
+  	CASE
+      WHEN placa_dod IS NOT NULL THEN 1.2* placa_dod
+      WHEN placa_dod IS NULL THEN 100
+    END
+ 	FROM pracownicy WHERE id_prac= p.id_prac)
+WHERE p.id_prac >= 250;
+
+SELECT * FROM pracownicy WHERE id_prac >= 250
+
+Zadanie 3
+INSERT INTO zespoly(id_zesp, nazwa, adres) VALUES (60, 'BAZY DANYCH', 'PIOTROWO 2');
+
+SELECT * FROM zespoly WHERE id_zesp = 60
+
+Zadanie 4
+UPDATE pracownicy SET id_zesp = (SELECT id_zesp FROM zespoly WHERE nazwa ='BAZY DANYCH') WHERE id_prac >= 250;
+
+SELECT * FROM pracownicy WHERE id_prac >=250
+
+Zadanie 5
+UPDATE pracownicy p SET id_szefa = (SELECT id_prac FROM pracownicy WHERE nazwisko = 'MORZY') WHERE id_zesp = (SELECT id_zesp from zespoly WHERE nazwa='BAZY DANYCH');
+
+
+SELECT * FROM pracownicy WHERE id_szefa = (SELECT id_prac FROM pracownicy WHERE nazwisko = 'MORZY')
+
+Zadanie 6
+DELETE FROM zespoly WHERE nazwa = 'BAZY DANYCH';
+
+/operacja zakończona niepowodzeniem - znaleziono rekord podrzędny. Rekord nie może zostać usuniety, ponieważ są do niego odwołania w tablicy pracownicy/
+
+Zadanie 7
+DELETE FROM pracownicy WHERE id_zesp = (SELECT id_zesp FROM zespoly WHERE nazwa = 'BAZY DANYCH'); 
+
+DELETE FROM zespoly WHERE nazwa = 'BAZY DANYCH';
+
+SELECT * FROM pracownicy WHERE id_zesp = (SELECT id_zesp FROM zespoly WHERE nazwa = 'BAZY DANYCH');
+
+SELECT * FROM zespoly WHERE nazwa = 'BAZY DANYCH'
+
+Zadanie 8
+SELECT p.nazwisko, p.placa_pod, p1.podwyzka FROM pracownicy p JOIN (SELECT id_zesp, 0.1 * AVG(placa_pod) AS podwyzka FROM pracownicy GROUP BY id_ZESP) p1
+ON p.id_zesp = p1.id_zesp ORDER BY p.nazwisko
+
+Zadanie 9
+UPDATE pracownicy p SET p.placa_pod = ( SELECT p.placa_pod + 0.1 * AVG(placa_pod) FROM pracownicy GROUP BY id_zesp HAVING id_zesp = p.id_zesp);
+
+SELECT nazwisko, placa_pod FROM pracownicy ORDER BY nazwisko
+
+Zadanie 10
+SELECT * FROM pracownicy ORDER BY placa_pod FETCH FIRST 1 ROW ONLY
+
+Zadanie 11
+UPDATE pracownicy p SET placa_pod = (SELECT AVG(placa_pod) FROM pracownicy) WHERE p.id_prac = (SELECT id_prac FROM pracownicy ORDER BY placa_pod FETCH FIRST 1 ROW ONLY);
+
+SELECT * FROM pracownicy WHERE nazwisko = 'ZAKRZEWICZ'
+
+Zadanie 12
+SELECT nazwisko, placa_dod FROM pracownicy WHERE id_zesp = 20 ORDER BY nazwisko;
+
+UPDATE pracownicy p SET placa_dod = (SELECT placa_dod FROM (SELECT id_szefa, AVG(placa_pod) AS placa_dod FROM pracownicy GROUP BY id_szefa) WHERE id_szefa = (SELECT id_prac FROM pracownicy WHERE nazwisko = 'MORZY'))WHERE id_zesp = 20; 
+
+SELECT nazwisko, placa_dod FROM pracownicy WHERE id_zesp = 20 ORDER BY nazwisko
+
+Zadanie 13
+SELECT p.nazwisko, p.placa_pod FROM pracownicy p JOIN zespoly z ON p.id_zesp = z.id_zesp WHERE z.nazwa = 'SYSTEMY ROZPROSZONE' ORDER BY p.nazwisko;
+
+UPDATE (SELECT p.nazwisko, p.placa_pod FROM pracownicy p JOIN zespoly z ON p.id_zesp = z.id_zesp WHERE z.nazwa = 'SYSTEMY ROZPROSZONE')
+SET placa_pod = 1.25 * placa_pod;
+
+SELECT p.nazwisko, p.placa_pod FROM pracownicy p JOIN zespoly z ON p.id_zesp = z.id_zesp WHERE z.nazwa = 'SYSTEMY ROZPROSZONE' ORDER BY p.nazwisko
+
+Zadanie 14
+SELECT pracownik, szef FROM (SELECT id_szefa, nazwisko AS pracownik FROM pracownicy) p, (SELECT id_prac, nazwisko AS szef FROM pracownicy WHERE nazwisko = 'MORZY') s WHERE p.id_szefa = s.id_prac;
+
+DELETE FROM (SELECT pracownik, szef FROM (SELECT id_szefa, nazwisko AS pracownik FROM pracownicy) p, (SELECT id_prac, nazwisko AS szef FROM pracownicy WHERE nazwisko = 'MORZY') s WHERE p.id_szefa = s.id_prac);
+
+SELECT pracownik, szef FROM (SELECT id_szefa, nazwisko AS pracownik FROM pracownicy) p, (SELECT id_prac, nazwisko AS szef FROM pracownicy WHERE nazwisko = 'MORZY') s WHERE p.id_szefa = s.id_prac
+
+Zadanie 15
+SELECT * FROM pracownicy ORDER BY nazwisko
+
+Zadanie 16
+CREATE SEQUENCE PRAC_SEQ START WITH 300 INCREMENT BY 10;
+
+Zadanie 17
+INSERT INTO pracownicy(id_prac, nazwisko, etat, placa_pod) VALUES (prac_seq.NEXTVAL, 'TRĄBCZYŃSKI', 'STAZYSTA', 1000);
+
+SELECT * FROM pracownicy WHERE nazwisko ='TRĄBCZYŃSKI'
+
+Zadanie 18
+
+INSERT INTO pracownicy(id_prac, nazwisko, etat, placa_pod) VALUES (prac_seq.NEXTVAL, 'TRĄBCZYŃSKI', 'STAZYSTA', 1000);
+
+UPDATE pracownicy SET placa_dod = prac_seq.CURRVAL WHERE nazwisko = 'TRĄBCZYŃSKI';
+
+SELECT * FROM pracownicy WHERE nazwisko ='TRĄBCZYŃSKI'
+
+Zadanie 19
+DELETE FROM pracownicy WHERE nazwisko ='TRĄBCZYŃSKI'
+
+Zadanie 20
+CREATE SEQUENCE MALA_SEQ START WITH 5 INCREMENT BY 5 MAXVALUE 10;
+
+/ ze względu na bład 'numer kolejny nie dozwolony tutaj' zastosowano substytut polecenia /
+
+INSERT INTO pracownicy (id_prac) VALUES (400 + mala_seq.NEXTVAL); 
+
+/ po przekroczeniu limitu występuje komunikat o przekroczenu wartości maksymalnej i informacja że rekord nie morze być dodany /
+
+DELETE FROM pracownicy WHERE id_prac >= 400 / usuwanie dodnych rekordów /
+
+Zadanie 21 
+DROP SEQUENCE mala_seq

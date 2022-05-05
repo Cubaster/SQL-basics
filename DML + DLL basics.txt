@@ -1,0 +1,54 @@
+Zadanie 1
+CREATE TABLE PROJEKTY
+	(ID_PROJEKTU NUMBER(4) GENERATED ALWAYS AS IDENTITY,
+     OPIS_PROJEKTU VARCHAR(20),
+     DATA_ROZPOCZECIA DATE DEFAULT CURRENT_DATE,
+     DATA_ZAKONCZENIA DATE,
+     FUNDUSZ NUMBER(7,2) 
+     );
+     
+Zadanie 2
+INSERT INTO projekty(opis_projektu,data_rozpoczecia,data_zakonczenia,fundusz) 
+	VALUES('INDEKSY BITMAPOWE', DATE '1999-04-02', DATE '2001-08-31', 25000);
+INSERT INTO projekty(opis_projektu,data_rozpoczecia,data_zakonczenia,fundusz) 
+	VALUES('SIECI KRĘGOSŁUPOWE', DEFAULT, NULL, 19000);
+
+Zadanie 3
+SELECT id_projektu, opis_projektu FROM projekty
+
+Zadanie 4
+INSERT INTO projekty(id_projektu, opis_projektu, data_rozpoczecia, data_zakonczenia, fundusz)
+	VALUES(10, 'INDEKSY DRZEWIASTE', DATE '2013-12-24', DATE '2014-01-01', 1200);
+
+/ zakończone niepowodzeniem, ponieważ wartość generowana jest automatycznie /
+
+INSERT INTO projekty(opis_projektu, data_rozpoczecia, data_zakonczenia, fundusz)
+	VALUES('INDEKSY DRZEWIASTE', DATE '2013-12-24', DATE '2014-01-01', 1200);
+
+SELECT id_projektu, opis_projektu FROM projekty ORDER BY id_projektu
+
+Zadanie 5
+UPDATE projekty SET id_projektu = 10 WHERE opis_projektu = 'INDEKSY DRZEWIASTE';
+/ nie można zaktualizować wartości utworzonej jako GENERATED ALWAYS /
+
+Zadanie 6
+CREATE TABLE PROJEKTY_KOPIA AS SELECT * FROM PROJEKTY;
+
+SELECT * FROM PROJEKTY_KOPIA ORDER BY id_projektu
+
+Zadanie 7
+INSERT INTO projekty_kopia(id_projektu, opis_projektu, data_rozpoczecia, data_zakonczenia, fundusz)
+	VALUES(10, 'SIECI LOKALNE',CURRENT_DATE, CURRENT_DATE + INTERVAL '1' YEAR, 24500);
+
+SELECT id_projektu, opis_projektu FROM projekty_kopia ORDER BY id_projektu
+/ można było podać recznie id projektu, ponieważ ograniczenia integralnościowe nie są kopiowane - nie skopiowano GENERATED ALWAYS/
+
+Zadanie 8
+DELETE FROM projekty WHERE opis_projektu = 'INDEKSY DRZEWIASTE';
+
+SELECT id_projektu, opis_projektu FROM projekty_kopia ORDER BY id_projektu
+
+/usunięcie rekordu z tabeli głownej nie spowodowało usunięcia rekordu z jej kopii/
+
+Zadanie 9
+SELECT table_name FROM user_tables ORDER BY table_name

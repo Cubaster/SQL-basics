@@ -1,0 +1,77 @@
+Zadanie 1
+CREATE OR REPLACE VIEW ASYSTENCI(
+  id, nazwisko, placa, staz
+  )
+AS SELECT
+	id_prac,
+	nazwisko,
+	placa_pod + COALESCE(placa_dod, 0),
+	'lat: ' || (EXTRACT( YEAR FROM DATE '2021-01-01') - EXTRACT(YEAR FROM zatrudniony)) || ' miesiący: ' ||
+		CASE
+      		WHEN EXTRACT(MONTH FROM DATE '2021-01-01') - EXTRACT(MONTH FROM zatrudniony) > 0 THEN EXTRACT(MONTH FROM DATE '2021-01-01') - EXTRACT(MONTH FROM zatrudniony)
+      		ELSE -(EXTRACT(MONTH FROM DATE '2021-01-01') - EXTRACT(MONTH FROM zatrudniony))
+    	END
+FROM pracownicy WHERE etat = 'ASYSTENT';
+          
+SELECT nazwisko, placa, staz FROM asystenci ORDER BY nazwisko;
+
+Zadanie 2
+CREATE OR REPLACE VIEW PLACE(
+  id_zesp, srednia, minimum, maximum, fundusz, l_pensji, l_dodatkow
+  )
+AS SELECT
+	id_zesp,
+	AVG(placa_pod + COALESCE(placa_dod, 0)),
+	MIN(placa_pod + COALESCE(placa_dod, 0)),
+	MAX(placa_pod + COALESCE(placa_dod, 0)),
+	SUM(placa_pod + COALESCE(placa_dod, 0)),
+	COUNT(placa_pod),
+	COUNT(placa_dod)
+FROM pracownicy GROUP BY id_zesp ORDER BY id_zesp;
+
+SELECT * FROM place
+
+Zadanie 3
+SELECT nazwisko, placa_pod FROM pracownicy p INNER JOIN place pl ON p.id_zesp = pl.id_zesp WHERE (placa_pod + COALESCE(placa_dod, 0)) < srednia ORDER BY nazwisko
+
+Zadanie 4
+CREATE OR REPLACE VIEW PLACE_MINIMALNE(id_prac, nazwisko, etat, placa_pod)
+	AS SELECT id_prac, nazwisko, etat, placa_pod
+		FROM pracownicy WHERE placa_pod < 700 WITH CHECK OPTION CONSTRAINT za_wysoka_placa;
+		
+SELECT * FROM place_minimalne ORDER BY nazwisko
+
+Zadanie 5
+UPDATE place_minimalne SET placa_pod = 800 WHERE nazwisko = 'HAPKE';
+/ naruszenie klauzuli WHERE dla perspektywy z WITH CHECK OPTION /
+
+Zadanie 6
+CREATE OR REPLACE VIEW PRAC_SZEF(id_prac, id_szefa, pracownik, etat, szef)
+	AS SELECT 
+		p.id_prac,
+		p.id_szefa,
+		p.nazwisko,
+		p.etat,
+		s.nazwisko AS szef 
+	FROM pracownicy p LEFT JOIN pracownicy s ON p.id_szefa = s.id_prac ORDER BY p.nazwisko;
+
+SELECT * FROM prac_szef;
+INSERT INTO prac_szef(id_prac, id_szefa, pracownik, etat) VALUES (280, 150, 'MORZY','ASYSTENT'); 
+UPDATE prac_szef SET id_szefa = 130 WHERE id_prac = 280;
+DELETE FROM prac_szef WHERE id_prac = 280;
+
+Zadanie 7
+CREATE OR REPLACE VIEW ZAROBKI(id_prac, nazwisko, etat, placa_pod)
+	AS SELECT
+	 p.id_prac,
+	 p.nazwisko,
+	 p.etat,
+	 p.placa_pod
+	FROM pracownicy p WHERE p.placa_pod < (SELECT placa_pod FROM pracownicy WHERE p.id_szefa = id_prac) WITH CHECK OPTION CONSTRAINT chk_place; 
+
+SELECT * FROM zarobki ORDER BY nazwisko;
+UPDATE zarobki SET placa_pod = 2000 WHERE nazwisko = 'BIALY';
+/ naruszenie klauzuli WHERE dla perspektywy z WITH CHECK OPTION /
+
+Zadanie 8
+SELECT column_name, updatable, insertable, deletable FROM user_updatable_columns WHERE table_name = 'PRAC_SZEF'

@@ -1,0 +1,55 @@
+Zadanie 1
+(1) SELECT nazwisko, placa_pod FROM pracownicy ORDER BY placa_pod DESC FETCH FIRST 3 ROW ONLY
+(2) SELECT p.nazwisko, p.placa_pod FROM (SELECT nazwisko, placa_pod FROM pracownicy ORDER BY placa_pod DESC) p WHERE ROWNUM <= 3
+Zadanie 2
+(1) SELECT nazwisko, placa_pod FROM pracownicy ORDER BY placa_pod DESC OFFSET 5 ROWS FETCH NEXT 5 ROW ONLY
+(2) SELECT p2.nazwisko, p2.placa_pod FROM
+ 	(SELECT ROWNUM AS num, p.nazwisko, p.placa_pod FROM
+ 		(SELECT nazwisko, placa_pod FROM pracownicy ORDER BY placa_pod DESC) p) p2
+    WHERE num <= 10 AND num > 5
+Zadanie 3
+WITH srednia_zesp AS (SELECT id_zesp, AVG(placa_pod) AS sred FROM pracownicy GROUP BY id_zesp)
+ SELECT nazwisko, placa_pod, (placa_pod - sred) AS roznica FROM
+	 srednia_zesp s JOIN pracownicy p ON s.id_zesp = p.id_zesp WHERE p.placa_pod > s.sred ORDER BY nazwisko
+Zadanie 4
+WITH lata AS
+	(SELECT EXTRACT(YEAR FROM ZATRUDNIONY) AS rok, COUNT(*) AS liczba FROM pracownicy GROUP BY EXTRACT(YEAR FROM ZATRUDNIONY))
+SELECT * FROM lata ORDER BY liczba DESC, rok
+Zadanie 5
+WITH lata AS
+	(SELECT EXTRACT(YEAR FROM ZATRUDNIONY) AS rok, COUNT(*) AS liczba FROM pracownicy GROUP BY EXTRACT(YEAR FROM ZATRUDNIONY))
+SELECT * FROM lata ORDER BY liczba DESC, rok FETCH FIRST 1 ROW ONLY
+Zadanie 6
+WITH Asystenci AS
+	(SELECT nazwisko, etat, id_zesp FROM pracownicy WHERE etat = 'ASYSTENT'),
+	Piotrowo AS
+	(SELECT * FROM zespoly WHERE SUBSTR(adres, 1, 8) ='PIOTROWO')
+SELECT nazwisko, etat, nazwa, adres FROM Asystenci a JOIN Piotrowo p ON a.id_zesp = p.id_zesp
+Zadanie 7
+WITH suma_w_zespole AS
+	( SELECT id_zesp, SUM(placa_pod) AS maks_suma_plac FROM pracownicy GROUP BY id_zesp )
+SELECT nazwa, maks_suma_plac FROM suma_w_zespole s 
+	JOIN zespoly z ON s.id_zesp = z.id_zesp ORDER BY maks_suma_plac DESC FETCH FIRST 1 ROW ONLY
+Zadanie 8
+(1) 
+WITH podwladni (id_prac, id_szefa, nazwisko, poziom) AS
+	(SELECT id_prac, id_szefa, nazwisko, 1 FROM pracownicy
+     	WHERE nazwisko = 'BRZEZINSKI' UNION ALL
+     SELECT p.id_prac, p.id_szefa, p.nazwisko, poziom + 1 FROM
+      	podwladni pod JOIN pracownicy p ON pod.id_prac = p.id_szefa)
+  SEARCH DEPTH FIRST BY nazwisko SET porzadek_podwladnych
+SELECT nazwisko, poziom AS pozycja_w_hierarchii FROM podwladni ORDER BY porzadek_podwladnych
+(2)
+SELECT nazwisko, LEVEL AS pozycja_w_hierarchii FROM pracownicy
+	CONNECT BY id_szefa = PRIOR id_prac
+		START WITH nazwisko = 'BRZEZINSKI'
+	ORDER SIBLINGS BY nazwisko
+Zadanie 9
+WITH podwladni (id_prac, id_szefa, nazwisko, poziom) AS
+	(SELECT id_prac, id_szefa, nazwisko, 1 FROM pracownicy
+     	WHERE nazwisko = 'BRZEZINSKI' UNION ALL
+     SELECT p.id_prac, p.id_szefa, p.nazwisko, poziom + 1 FROM
+      	podwladni pod JOIN pracownicy p ON pod.id_prac = p.id_szefa)
+  SEARCH DEPTH FIRST BY nazwisko SET porzadek_podwladnych
+SELECT LPAD(nazwisko, (poziom - 1) + LENGTH(nazwisko), '_') AS nazwisko, poziom AS pozycja_w_hierarchii FROM podwladni ORDER BY porzadek_podwladnych
+

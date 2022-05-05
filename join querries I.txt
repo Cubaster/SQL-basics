@@ -1,0 +1,42 @@
+Zadanie 1
+SELECT nazwisko, etat, pracownicy.id_zesp, nazwa FROM pracownicy INNER JOIN zespoly ON pracownicy.id_zesp=zespoly.id_zesp ORDER BY nazwisko
+Zadanie 2
+SELECT nazwisko, etat, pracownicy.id_zesp, nazwa FROM pracownicy INNER JOIN zespoly ON pracownicy.id_zesp=zespoly.id_zesp WHERE adres='PIOTROWO 3A'  ORDER BY nazwisko
+Zadanie 3
+SELECT nazwisko, etat, placa_pod, placa_min, placa_max FROM pracownicy INNER JOIN etaty ON etat=nazwa ORDER BY etat, nazwisko
+Zadanie 4
+SELECT nazwisko, etat, placa_pod, placa_min, placa_max,
+	CASE
+      WHEN placa_pod BETWEEN placa_min AND placa_max THEN 'OK'
+      ELSE 'NIE'
+    END AS czy_pensja_ok
+FROM pracownicy INNER JOIN etaty ON etat=nazwa ORDER BY etat, nazwisko
+Zadanie 5
+SELECT nazwisko, etat, placa_pod, placa_min, placa_max,
+	CASE
+      WHEN placa_pod BETWEEN placa_min AND placa_max THEN 'OK'
+      ELSE 'NIE'
+    END AS czy_pensja_ok
+FROM pracownicy INNER JOIN etaty ON etat=nazwa WHERE placa_pod NOT BETWEEN placa_min AND placa_max  ORDER BY etat, nazwisko
+Zadanie 6
+SELECT nazwisko, placa_pod, etat, nazwa AS kat_plac, placa_min, placa_max
+FROM pracownicy INNER JOIN etaty ON placa_pod BETWEEN placa_min AND placa_max ORDER BY nazwisko, nazwa
+Zadanie 7
+SELECT nazwisko, placa_pod, etat, nazwa AS kat_plac, placa_min, placa_max
+FROM pracownicy INNER JOIN etaty ON placa_pod BETWEEN placa_min AND placa_max WHERE nazwa='SEKRETARKA' ORDER BY nazwisko, nazwa
+Zadanie 8
+SELECT p.nazwisko AS pracownik, p.id_prac, s.nazwisko AS szef, p.id_szefa FROM pracownicy p, pracownicy s WHERE p.id_szefa=s.id_prac ORDER BY p.nazwisko
+Zadania 9
+SELECT p.nazwisko AS pracownik, TO_CHAR(p.zatrudniony,'YY/MM/DD') AS pracuje_od, s.nazwisko AS szef,TO_CHAR(s.zatrudniony,'YY/MM/DD') AS zatrudniony, EXTRACT(YEAR FROM p.zatrudniony) - EXTRACT(YEAR FROM s.zatrudniony) AS lata
+FROM pracownicy p, pracownicy s WHERE p.id_szefa=s.id_prac AND 
+EXTRACT(YEAR FROM p.zatrudniony) - EXTRACT(YEAR FROM s.zatrudniony) < 10 ORDER BY p.zatrudniony, p.nazwisko
+Zadanie 10
+SELECT z.nazwa, COUNT(*) AS liczba, AVG(p.placa_pod) AS srednia_placa FROM zespoly z INNER JOIN pracownicy p ON p.id_zesp=z.id_zesp GROUP BY z.nazwa
+ORDER BY z.nazwa
+Zadanie 11
+SELECT z.nazwa,
+CASE
+  WHEN COUNT(*) BETWEEN 1 AND 2 THEN 'mały'
+  WHEN COUNT(*) BETWEEN 3 AND 6 THEN 'średni'
+  WHEN COUNT(*) >=7 THEN 'duży' END AS etykieta FROM zespoly z INNER JOIN pracownicy p ON p.id_zesp=z.id_zesp GROUP BY z.nazwa
+HAVING COUNT(*) > 0 ORDER BY z.nazwa

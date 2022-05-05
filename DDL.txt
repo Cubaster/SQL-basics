@@ -1,0 +1,99 @@
+Zadanie 1
+ALTER TABLE projekty 
+	ADD(
+      CONSTRAINT PK_PROJEKTY PRIMARY KEY(ID_PROJEKTU),
+      CONSTRAINT UK_PROJEKTY UNIQUE(OPIS_PROJEKTU),
+      CHECK(DATA_ZAKONCZENIA > DATA_ROZPOCZECIA),
+      CHECK(FUNDUSZ > 0)
+      );
+		
+ALTER TABLE projekty
+	MODIFY(
+      	OPIS_PROJEKTU NOT NULL
+      );
+
+SELECT con.constraint_name, con.constraint_type, con.search_condition, col.column_name
+FROM user_constraints con INNER JOIN user_cons_columns col ON con.constraint_name = col.constraint_name
+WHERE con.table_name = 'PROJEKTY' ORDER BY con.constraint_name
+
+Zadanie 2
+INSERT INTO projekty(opis_projektu, data_rozpoczecia, data_zakonczenia, fundusz) 
+	VALUES('INDEKSY BITMAPOWE', DATE '2015-04-12', DATE '2016-09-30', 40000);
+
+/ naruszono więzy unikatowe /
+
+Zadanie 3
+CREATE TABLE przydzialy (
+  ID_PROJEKTU NUMBER(4) CONSTRAINT FK_PRZYDZIALY_01 REFERENCES projekty(id_projektu) NOT NULL,
+  NR_PRACOWNIKA NUMBER(6) CONSTRAINT FK_PRZYDZIALY_02 REFERENCES pracownicy(id_prac) NOT NULL,
+  OD DATE DEFAULT CURRENT_DATE,
+  DO DATE, CONSTRAINT CHK_PRZYDZIALY_DATY CHECK(OD < DO),
+  STAWKA NUMBER(7,2) CONSTRAINT CHK_PRZYDZIALY_STAWKA CHECK( STAWKA > 0),
+  ROLA VARCHAR(20) CONSTRAINT CHK_PRZYDZIALY_ROLA CHECK( ROLA IN ('KIERUJĄCY', 'ANALITYK', 'PROGRAMISTA'))
+  );
+
+Zadanie 4
+INSERT INTO przydzialy(id_projektu, nr_pracownika, od, do, stawka, rola)
+	VALUES((SELECT id_projektu FROM projekty WHERE opis_projektu = 'INDEKSY BITMAPOWE'), 170, DATE '1999-04-10', DATE '1999-05-10', 1000, 'KIERUJĄCY');
+INSERT INTO przydzialy(id_projektu, nr_pracownika, od, do, stawka, rola)
+	VALUES((SELECT id_projektu FROM projekty WHERE opis_projektu = 'INDEKSY BITMAPOWE'), 140, DATE '2000-12-01', NULL, 1500, 'ANALITYK');
+INSERT INTO przydzialy(id_projektu, nr_pracownika, od, do, stawka, rola)
+	VALUES((SELECT id_projektu FROM projekty WHERE opis_projektu = 'SIECI KRĘGOSŁUPOWE'), 140, DATE '2015-09-14', NULL, 2500, 'KIERUJĄCY');
+
+SELECT * FROM przydzialy
+
+Zadanie 5
+ALTER TABLE przydzialy ADD GODZINY NUMBER(4) NOT NULL CHECK( GODZINY < 9999);
+/ aby dodać obowiązkową kolumnę (NOT NULL) tabela musi być pusta /
+
+Zadanie 6
+ALTER TABLE przydzialy ADD GODZINY NUMBER(4);
+CREATE SEQUENCE czas START WITH 18 INCREMENT BY 6;
+UPDATE przydzialy SET godziny = czas.NEXTVAL;
+DROP SEQUENCE czas;
+ALTER TABLE przydzialy ADD (CHECK(GODZINY <= 9999)) MODIFY (GODZINY NOT NULL);
+SELECT * FROM przydzialy
+
+Zadanie 7
+ALTER TABLE projekty DISABLE CONSTRAINT UK_PROJEKTY;
+SELECT constraint_name, status FROM user_constraints WHERE constraint_name = 'UK_PROJEKTY'
+
+Zadanie 8
+INSERT INTO projekty(opis_projektu, data_rozpoczecia, data_zakonczenia, fundusz) 
+	VALUES('INDEKSY BITMAPOWE', DATE '2015-04-12', DATE '2016-09-30', 40000);
+SELECT * FROM projekty
+
+Zadanie 9
+ALTER TABLE projekty ENABLE CONSTRAINT UK_PROJEKTY;
+/ nie można zweryfikować poprawności - znaleziono zduplikowane klucze /
+
+Zadanie 10
+UPDATE projekty SET opis_projektu = 'INNE INDEKSY' WHERE id_projektu = 5;
+ALTER TABLE projekty ENABLE CONSTRAINT UK_PROJEKTY;
+/ po wprowadzonych zmianach udało się włączyć ograniczenie /
+
+Zadanie 11
+ALTER TABLE projekty MODIFY opis_projektu VARCHAR(10); 
+/ nie można zmniejszyć długości kolumny, ponieważ niektóre wartości są zbyt duże /
+
+Zadanie 12
+DELETE FROM projekty WHERE opis_projektu = 'SIECI KRĘGOSŁUPOWE';
+/ naruszono więzy spójności - znaleziono rekord podrzędny - w tabeli przydziały /
+
+Zadanie 13
+ALTER TABLE przydzialy DROP CONSTRAINT FK_PRZYDZIALY_01;
+ALTER TABLE przydzialy ADD CONSTRAINT FK_PRZYDZIALY_01 FOREIGN KEY(id_projektu) REFERENCES projekty(id_projektu) ON DELETE CASCADE;
+DELETE FROM projekty WHERE opis_projektu = 'SIECI KRĘGOSŁUPOWE';
+SELECT * FROM projekty;
+SELECT * FROM przydzialy
+
+Zadanie 14
+DROP TABLE projekty CASCADE CONSTRAINTS;
+SELECT constraint_name, constraint_type AS C, search_condition FROM  user_constraints 
+WHERE table_name = 'PRZYDZIALY' ORDER  BY constraint_name
+
+Zadanie 15
+DROP TABLE przydzialy;
+DROP TABLE projekty_kopia;
+
+SELECT table_name FROM user_tables ORDER BY table_name

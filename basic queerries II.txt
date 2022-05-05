@@ -1,0 +1,58 @@
+Zadanie 1
+
+SELECT nazwisko, LPAD(id_prac, 5, SUBSTR(etat, 1, 2)) AS kod FROM pracownicy
+
+Zadanie 2
+
+SELECT nazwisko, TRANSLATE(nazwisko, 'KML','XXX') AS wojna_literom FROM pracownicy
+
+Zadanie 3
+
+SELECT nazwisko FROM pracownicy WHERE INSTR(SUBSTR(nazwisko, 1, LENGTH(nazwisko)/2), 'L', 1, 1) > 0
+
+Zadanie 4
+
+SELECT nazwisko, ROUND(placa_pod *1.15, 0) AS podwyzka FROM pracownicy
+
+Zadanie 5
+
+SELECT nazwisko, placa_pod, placa_pod * 0.2 AS inwestycja, ROUND(placa_pod * 0.2 * POWER(1.1, 10), 6) AS kapital, ROUND(placa_pod * 0.2 * POWER(1.1, 10), 6) - placa_pod * 0.2 AS zysk FROM pracownicy
+
+Zadanie 6
+
+SELECT nazwisko, TO_CHAR(zatrudniony,'YY/MM/DD') AS zatrudni, EXTRACT(YEAR FROM (DATE '2000-01-01' - zatrudniony) YEAR TO MONTH) AS staz_w_2000 FROM pracownicy;
+
+Zadanie 7 
+
+SELECT nazwisko, TO_CHAR(zatrudniony, 'MONTH, DD YYYY') AS data_zatrudnienia FROM pracownicy WHERE id_zesp = 20
+
+Zadanie 8
+
+SELECT UNIQUE TO_CHAR(CURRENT_DATE, 'fmDAY') AS dzis FROM dual
+
+Zadanie 9
+
+SELECT nazwa, adres,
+CASE
+  WHEN  adres = 'PIOTROWO 3A' THEN 'NOWE MIASTO'
+  WHEN  adres IN('STRZELECKA 14','MIELZYNSKIEGO 30') THEN 'STARE MIASTO'
+  WHEN  adres ='WLODKOWICA 16' THEN 'GRUNWALD'
+END AS dzielnica FROM zespoly
+
+Zadanie 10
+
+SELECT nazwisko, placa_pod,
+CASE
+  WHEN placa_pod > 480 THEN 'Powyżej 480'
+  WHEN placa_pod = 480 THEN 'Dokładnie 480'
+  ELSE 'Poniżej 480'
+END AS próg FROM pracownicy ORDER BY placa_pod DESC
+
+Zadanie 11
+
+SELECT nazwisko, placa_pod,
+	DECODE(SIGN(placa_pod - 480),
+      -1, 'Poniżej 480', 0, 'Dokładnie 480', 1, 'Powyżej 480',CAST(placa_pod AS VARCHAR(13))) AS próg
+FROM pracownicy ORDER BY placa_pod DESC
+
+

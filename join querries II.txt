@@ -1,0 +1,37 @@
+Zadanie 1
+/*INSERT INTO pracownicy(id_prac, nazwisko) VALUES ((SELECT max(id_prac) + 1 FROM pracownicy), 'WOLNY');*/
+SELECT nazwisko, p.id_zesp, nazwa FROM pracownicy p LEFT JOIN zespoly z  ON p.id_zesp=z.id_zesp ORDER BY nazwisko;
+Zadanie 2
+SELECT nazwa, z.id_zesp, COALESCE(nazwisko, 'brak pracowników') AS pracownik FROM pracownicy p RIGHT JOIN zespoly z  ON p.id_zesp=z.id_zesp ORDER BY nazwa, nazwisko;
+Zadanie 3
+SELECT COALESCE(nazwa, 'brak zespołu') AS zespol, COALESCE(nazwisko, 'brak pracowników') AS pracownik FROM pracownicy p FULL JOIN zespoly z  ON p.id_zesp=z.id_zesp ORDER BY nazwa, nazwisko;
+/*DELETE FROM pracownicy WHERE nazwisko = 'WOLNY';*/
+Zadanie 4
+SELECT nazwa AS zespol, COUNT(p.id_zesp) AS liczba, SUM(placa_pod) AS suma_plac FROM pracownicy p FULL JOIN zespoly z ON p.id_zesp=z.id_zesp GROUP BY nazwa ORDER BY nazwa
+Zadanie 5
+SELECT nazwa FROM pracownicy p FULL JOIN zespoly z ON p.id_zesp=z.id_zesp GROUP BY nazwa HAVING COUNT(p.id_zesp) = 0 ORDER BY nazwa 
+Zadanie 6
+SELECT p.nazwisko AS pracownik, p.id_prac, s.nazwisko AS szef, p.id_szefa FROM pracownicy p LEFT JOIN pracownicy s ON p.id_szefa=s.id_prac ORDER BY p.nazwisko
+Zadanie 7
+SELECT s.nazwisko AS pracownik, COUNT(p.id_prac) AS liczba_podwladnych FROM pracownicy p RIGHT JOIN pracownicy s ON p.id_szefa = s.id_prac GROUP BY s.nazwisko ORDER BY s.nazwisko
+Zadanie 8
+SELECT p.nazwisko, p.etat, p.placa_pod, z.nazwa, s.nazwisko AS szef FROM pracownicy p LEFT JOIN pracownicy s ON p.id_szefa = s.id_prac INNER JOIN zespoly z ON z.id_zesp = p.id_zesp ORDER BY p.nazwisko
+Zadanie 9
+SELECT nazwisko, nazwa FROM pracownicy CROSS JOIN zespoly ORDER BY nazwisko, nazwa
+Zadanie 10
+SELECT COUNT(*) FROM pracownicy CROSS JOIN zespoly CROSS JOIN etaty
+Zadanie 11
+SELECT etat FROM pracownicy WHERE EXTRACT(YEAR FROM zatrudniony) = 1992
+	INTERSECT
+SELECT etat FROM pracownicy WHERE EXTRACT(YEAR FROM zatrudniony) = 1993 ORDER BY etat 
+Zadanie 12
+SELECT id_zesp FROM zespoly MINUS SELECT id_zesp FROM pracownicy;
+Zadanie 13
+SELECT id_zesp, nazwa FROM zespoly MINUS SELECT p.id_zesp, nazwa FROM pracownicy p INNER JOIN zespoly z ON p.id_zesp=z.id_zesp;
+Zadanie 14
+SELECT nazwisko, placa_pod, 'Poniżej 480 złotych' AS prog FROM pracownicy WHERE placa_pod < 480
+	UNION
+SELECT nazwisko, placa_pod, 'Dokładnie 480 złotych' AS prog FROM pracownicy WHERE placa_pod = 480
+	UNION
+SELECT nazwisko, placa_pod, 'Powyżej 480 złotych' AS prog FROM pracownicy WHERE placa_pod > 480 ORDER BY placa_pod
+
