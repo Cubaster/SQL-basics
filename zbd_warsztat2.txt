@@ -1,0 +1,281 @@
+--1.
+CREATE OR REPLACE PROCEDURE NowyPracownik(
+    vNazwisko IN VARCHAR2,
+    vNazwa IN VARCHAR2,
+    vSzef IN VARCHAR2, 
+    vPlaca IN NUMBER, 
+    vZatrudniony IN DATE DEFAULT SYSDATE,
+    vEtat IN VARCHAR2 DEFAULT 'STAZYSTA'
+) IS
+BEGIN
+    INSERT INTO pracownicy(
+     id_prac,
+     nazwisko,
+     etat,
+     id_szefa,
+     zatrudniony,
+     placa_pod,
+     id_zesp)
+    VALUES(
+        (SELECT MAX(pracownicy.id_prac) + 10 FROM pracownicy),
+        vNazwisko,
+        vEtat,
+        (SELECT id_prac FROM pracownicy WHERE nazwisko = vSzef),
+        vZatrudniony,
+        vPlaca,
+        (SELECT id_zesp FROM zespoly WHERE nazwa = vNazwa)
+        );
+END NowyPracownik;
+/
+EXEC NowyPracownik('DYNDALSKI','ALGORYTMY','BLAZEWICZ',250);
+/
+SELECT * FROM Pracownicy WHERE nazwisko = 'DYNDALSKI';
+
+--2.
+CREATE OR REPLACE FUNCTION PlacaNetto(
+    vPlaca IN NUMBER,
+    vPodatek IN NUMBER DEFAULT 20
+)
+RETURN FLOAT IS
+Netto FLOAT;
+BEGIN
+    Netto := vPlaca * (100 - vPodatek)/100;
+    RETURN Netto;
+END;
+/
+SELECT nazwisko, placa_pod AS BRUTTO,
+ PlacaNetto(placa_pod, 35) AS NETTO
+ FROM Pracownicy WHERE etat = 'PROFESOR' ORDER BY nazwisko;
+ /
+
+--3.
+ CREATE OR REPLACE FUNCTION Silnia(
+     vNumber IN NUMBER
+ )
+ RETURN NUMBER IS
+ wartosc NUMBER;
+ BEGIN
+     wartosc :=1;
+     FOR licznik IN 1..vNumber LOOP
+        wartosc := wartosc * licznik;
+     END LOOP;
+     RETURN wartosc;
+END Silnia;
+/
+SELECT Silnia (8) FROM Dual;
+--4.
+CREATE OR REPLACE FUNCTION SilniaRek(
+     vNumber IN NUMBER
+ )
+ RETURN NUMBER IS
+ BEGIN
+     IF vNumber <= 1 THEN RETURN 1;
+     ELSE RETURN SilniaRek(vNumber - 1) * vNumber;
+     END IF;
+END SilniaRek;
+/
+SELECT SilniaRek (8) FROM Dual;
+/
+
+--5.
+CREATE OR REPLACE FUNCTION IleLat(
+    vData IN DATE
+)
+RETURN NUMBER IS
+staz NUMBER;
+BEGIN
+    staz := EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM vData);
+    RETURN staz;
+END IleLat;
+/
+SELECT nazwisko, TO_CHAR(zatrudniony, 'yyyy/mm/dd') AS zatrudniony, IleLat(zatrudniony) AS staz
+ FROM Pracownicy WHERE placa_pod > 1000
+ ORDER BY nazwisko;
+
+ --6.
+ CREATE OR REPLACE PACKAGE Konwersja IS
+    FUNCTION  Cels_To_Fahr(vCtemp NUMBER)
+    RETURN NUMBER;
+
+    FUNCTION Fahr_To_Cels(vFtemp NUMBER)
+    RETURN NUMBER;
+END Konwersja;
+/
+CREATE OR REPLACE PACKAGE BODY Konwersja IS
+    FUNCTION  Cels_To_Fahr(vCtemp NUMBER)
+    RETURN NUMBER IS
+    zFtemp NUMBER;
+    BEGIN
+        zFtemp := 9/5 * vCtemp + 32;
+        RETURN zFtemp;
+    END Cels_To_Fahr;
+
+    FUNCTION Fahr_To_Cels(vFtemp NUMBER)
+    RETURN NUMBER IS
+    zCtemp NUMBER;
+    BEGIN
+        zCtemp := 5/9 * (vFtemp - 32);
+        RETURN zCtemp;
+    END Fahr_To_Cels;
+END Konwersja;
+/
+SELECT Konwersja.Fahr_To_Cels(212) AS CELSJUSZ FROM Dual;
+/
+SELECT Konwersja.Cels_To_Fahr(0) AS FAHRENHEIT FROM Dual;
+
+--7.
+CREATE OR REPLACE PACKAGE Zmienne IS
+    vLicznik NUMBER := 0;
+
+    PROCEDURE ZwiekszLicznik;
+
+    PROCEDURE ZmniejszLicznik;
+
+    FUNCTION PokazLicznik
+    RETURN NUMBER;
+END Zmienne;
+/
+CREATE OR REPLACE PACKAGE BODY Zmienne IS
+
+    PROCEDURE ZwiekszLicznik IS
+    BEGIN
+        vLicznik := vLicznik + 1;
+        dbms_output.put_line('Zwiększono');
+    END ZwiekszLicznik;
+
+    PROCEDURE ZmniejszLicznik IS
+    BEGIN
+        vLicznik := vLicznik - 1;
+        dbms_output.put_line('Zmniejszono');
+    END ZmniejszLicznik;
+
+    FUNCTION PokazLicznik
+    RETURN NUMBER IS
+    BEGIN
+        RETURN vLicznik;
+    END PokazLicznik;
+
+BEGIN
+    vLicznik := 1;
+    dbms_output.put_line('Zainicjalizowano');
+END Zmienne;
+/
+set serveroutput on
+/
+BEGIN
+ dbms_output.put_line(Zmienne.PokazLicznik);
+END;
+/
+BEGIN
+ Zmienne.ZwiekszLicznik;
+ DBMS_OUTPUT.PUT_LINE(Zmienne.PokazLicznik);
+ Zmienne.ZwiekszLicznik;
+ DBMS_OUTPUT.PUT_LINE (Zmienne.PokazLicznik);
+ Zmienne.ZmniejszLicznik;
+ DBMS_OUTPUT.PUT_LINE (Zmienne.PokazLicznik);
+END;
+/
+
+--8.
+CREATE OR REPLACE PACKAGE IntZespoly IS
+    PROCEDURE DodajZespol(
+     vNazwa zespoly.nazwa%TYPE,
+     vAdres zespoly.adres%TYPE);
+
+    PROCEDURE UsunPoID(vId_zesp zespoly.id_zesp%TYPE);
+
+    PROCEDURE UsunPoNazwie(vNazwa zespoly.nazwa%TYPE);
+
+    PROCEDURE AktualizujPoID(vId_zesp zespoly.id_zesp%TYPE,
+    vNazwa zespoly.nazwa%TYPE,
+    vAdres zespoly.adres%TYPE);
+
+    FUNCTION PobierzIDpoNazwie(vNazwa zespoly.nazwa%TYPE) RETURN NUMBER;
+
+    FUNCTION PobierzNazwePoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2;
+
+    FUNCTION PobierzAdresPoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2;
+END IntZespoly;
+/
+
+
+CREATE OR REPLACE PACKAGE BODY IntZespoly IS
+    PROCEDURE DodajZespol(
+     vNazwa zespoly.nazwa%TYPE,
+     vAdres zespoly.adres%TYPE
+     ) IS
+    BEGIN
+        INSERT INTO zespoly(id_zesp, nazwa, adres)
+        VALUES((SELECT MAX(id_zesp) + 10 FROM zespoly), vNazwa, vAdres);
+        dbms_output.put_line('Dodano nowy zespol');
+    END DodajZespol;
+
+    PROCEDURE UsunPoID(vId_zesp zespoly.id_zesp%TYPE) IS
+    BEGIN
+        DELETE FROM zespoly WHERE id_zesp = vId_zesp;
+        dbms_output.put_line('Usunieto zespol');
+    END UsunPoID;
+
+    PROCEDURE UsunPoNazwie(vNazwa zespoly.nazwa%TYPE) IS
+    BEGIN
+        DELETE FROM zespoly WHERE nazwa = vNazwa;
+        dbms_output.put_line('Usunieto zespol');
+    END UsunPoNazwie;
+
+    PROCEDURE AktualizujPoID(vId_zesp zespoly.id_zesp%TYPE,
+    vNazwa zespoly.nazwa%TYPE,
+    vAdres zespoly.adres%TYPE) IS
+    BEGIN
+        UPDATE zespoly
+        SET nazwa = vNazwa, adres = vAdres
+        WHERE id_zesp = vId_zesp;
+        dbms_output.put_line('Zmieniono nazwe i adres');
+    END AktualizujPoID;
+
+    FUNCTION PobierzIDpoNazwie(vNazwa zespoly.nazwa%TYPE)
+    RETURN NUMBER IS
+    cId NUMBER;
+    BEGIN
+        SELECT id_zesp INTO cId FROM zespoly WHERE nazwa = vNazwa;
+        RETURN cId;
+    END PobierzIDpoNazwie;
+
+    FUNCTION PobierzNazwePoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2 IS
+    cNazwa VARCHAR2(40);
+    BEGIN
+        SELECT nazwa INTO cNazwa FROM zespoly WHERE id_zesp = vId_zesp;
+        RETURN cNazwa;
+    END PobierzNazwePoID;
+
+    FUNCTION PobierzAdresPoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2 IS
+    cAdres VARCHAR2(40);
+    BEGIN
+        SELECT adres INTO cAdres FROM zespoly WHERE id_zesp = vId_zesp;
+        RETURN cAdres;
+    END PobierzAdresPoID;
+
+END IntZespoly;
+/
+BEGIN 
+    IntZespoly.DodajZespol('Sztuczna', 'Piotorwo 3B');
+    --dbms_output.put_line(IntZespoly.PobierzIDpoNazwie('Sztuczna'));
+    --IntZespoly.UsunPoID(60);
+    --IntZespoly.DodajZespol('Sztuczna', 'Piotorwo 3B');
+    --IntZespoly.UsunPoNazwie('Sztuczna');
+    --IntZespoly.AktualizujPoID(60, 'Nanotechnologie', 'Piotrowo 3C');
+    --dbms_output.put_line(IntZespoly.PobierzNazwePoID(60));
+    --dbms_output.put_line(IntZespoly.PobierzAdresPoID(60));
+END;
+/
+--9.
+SELECT name, text, line, object_type, status FROM user_source, User_Objects WHERE name = object_name ORDER BY line;
+/
+--10.
+DROP FUNCTION Silnia;
+/
+DROP FUNCTION SilniaRek;
+/
+DROP FUNCTION IleLat;
+/
+--11.
+DROP PACKAGE Konwersja;

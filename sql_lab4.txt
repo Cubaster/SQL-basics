@@ -1,0 +1,262 @@
+CREATE TRIGGER PoPoleceniu
+ AFTER UPDATE ON Pracownicy
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('Zmieniono dane tabeli Pracownicy!');
+END;
+/
+UPDATE PRACOWNICY SET placa_pod =  placa_pod * 1.1;
+/
+--1.
+CREATE TABLE DziennikOperacji(
+    data DATE,
+    typ VARCHAR(10),
+    nazwa VARCHAR(50),
+    liczb_rekordow INTEGER
+);
+/
+CREATE OR REPLACE TRIGGER LogujOperacje
+    AFTER INSERT OR DELETE OR UPDATE ON Zespoly
+DECLARE
+    vtyp VARCHAR(10);
+    vliczba INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO vliczba FROM Zespoly;
+    CASE
+        WHEN INSERTING THEN
+            vtyp := 'INSERT';
+        WHEN DELETING THEN
+            vtyp := 'DELETE';
+        WHEN UPDATING THEN
+            vtyp := 'UPDATE';
+    END CASE;
+    INSERT INTO DziennikOperacji
+    VALUES (SYSDATE, vtyp, 'ZESPOLY', vliczba);
+END;
+/
+INSERT INTO Zespoly VALUES(70, 'ARCHITEKTURA', 'PIOTROWO 3C');
+/
+UPDATE Zespoly SET nazwa = 'MECHANIKA' WHERE id_zesp = 60;
+/
+DELETE FROM Zespoly WHERE nazwa = 'ARCHITEKTURA';
+/
+
+--2.
+CREATE OR REPLACE TRIGGER PokazPlace
+ BEFORE UPDATE OF placa_pod ON Pracownicy
+ FOR EACH ROW
+ WHEN ((OLD.placa_pod <> NEW.placa_pod) OR  (NEW.placa_pod IS NULL) OR (OLD.placa_pod IS NULL AND NEW.placa_pod IS NOT NULL) )
+BEGIN
+ DBMS_OUTPUT.PUT_LINE('Pracownik ' || :OLD.nazwisko);
+ DBMS_OUTPUT.PUT_LINE('Płaca przed modyfikacją: ' || :OLD.placa_pod);
+ DBMS_OUTPUT.PUT_LINE('Płaca po modyfikacji: ' || :NEW.placa_pod);
+END;
+/
+UPDATE PRACOWNICY SET placa_pod = NULL WHERE etat = 'SEKRETARKA';
+/
+UPDATE PRACOWNICY SET placa_pod = 500 WHERE etat = 'SEKRETARKA';
+/
+UPDATE PRACOWNICY SET placa_pod = 497 WHERE etat = 'SEKRETARKA';
+/
+UPDATE PRACOWNICY SET placa_pod = 497 WHERE etat = 'SEKRETARKA';
+/
+
+--3.
+CREATE OR REPLACE TRIGGER UzupelnijPlace
+ BEFORE INSERT ON Pracownicy
+ FOR EACH ROW
+ WHEN (NEW.etat IS NOT NULL)
+DECLARE
+  vPlaca_pod etaty.placa_min%TYPE;
+BEGIN
+  SELECT placa_min INTO vPlaca_pod
+  FROM etaty WHERE nazwa = :NEW.etat;
+  IF (:NEW.placa_pod  IS NULL OR :NEW.placa_dod IS NULL) THEN
+        :NEW.placa_pod := vPlaca_pod;
+        :NEW.placa_dod := 0;
+  END IF;
+END;
+/
+INSERT INTO Pracownicy VALUES (300, 'KRZYŻ', 'ASYSTENT', 110, SYSDATE, NULL, 150, 30);
+/ 
+INSERT INTO Pracownicy VALUES (310, 'KRZYŻYK', 'ASYSTENT', 120, SYSDATE, 230, NULL, 30);
+/
+INSERT INTO Pracownicy VALUES (320, 'KRZYK', 'PROFESOR', NULL, SYSDATE, NULL, NULL, 20);
+/
+INSERT INTO Pracownicy VALUES (330, 'KRZYS', 'SEKRETARKA', 110, SYSDATE, 500, 150, 30);
+/
+INSERT INTO Pracownicy VALUES (340, 'KRZYŻ', 'POMOCNIK', 110, SYSDATE, NULL, 150, 30);
+/
+
+--4.
+SELECT MAX(id_zesp) FROM Zespoly;
+/
+CREATE SEQUENCE SEQ_Zespoly
+    START WITH 61
+    INCREMENT BY 1;
+/
+CREATE OR REPLACE TRIGGER  UzupelnijID
+    BEFORE INSERT ON Zespoly
+    FOR EACH ROW
+    WHEN (NEW.id_zesp IS NULL)
+BEGIN
+    :NEW.id_zesp := SEQ_Zespoly.nextval;
+END;
+/
+INSERT INTO Zespoly(nazwa, adres) VALUES('NOWY', 'brak');
+
+
+--5.
+CREATE OR REPLACE VIEW Szefowie
+    (szef,
+    pracownicy)
+AS
+SELECT s.nazwisko AS szef, COUNT(p.id_prac) AS pracownicy 
+FROM pracownicy p, pracownicy s 
+WHERE p.id_szefa = s.id_prac 
+GROUP BY s.nazwisko ORDER BY s.nazwisko; 
+/
+SELECT * FROM Szefowie;
+
+CREATE OR REPLACE TRIGGER UsunHierarchie
+    INSTEAD OF DELETE ON Szefowie
+DECLARE
+    CURSOR vSzefowie IS
+    SELECT szef FROM Szefowie;
+
+    vIDszefa Pracownicy.id_prac%TYPE;
+    vState NUMBER;
+
+BEGIN 
+    SELECT id_prac INTO vIDszefa FROM Pracownicy WHERE nazwisko = :OLD.szef;
+
+    FOR cSzef IN vSzefowie LOOP
+        SELECT CASE
+            WHEN EXISTS(SELECT nazwisko FROM Pracownicy WHERE
+            id_szefa = vIDszefa AND nazwisko = cSzef.szef) THEN 1
+            ELSE 0
+        END INTO vState FROM DUAL;
+        EXIT WHEN vState = 1;
+    END LOOP;
+
+    IF vState > 0 THEN 
+        RAISE_APPLICATION_ERROR(-20001, 'Jeden z podwładnych usuwanego pracownika jest szefem innych pracowników. Usuwanie anulowane!');
+    END IF;
+
+    DELETE FROM Pracownicy WHERE id_szefa = vIDszefa;
+
+    DELETE FROM Pracownicy WHERE nazwisko = :OLD.szef;
+END;
+/
+SAVEPOINT ABC;
+SELECT * FROM Pracownicy WHERE id_prac = 140 OR id_szefa = 140;
+DELETE FROM Szefowie WHERE szef = 'MORZY';
+SELECT * FROM Szefowie;
+ROLLBACK WORK TO SAVEPOINT ABC;
+/
+
+
+--6.
+
+ALTER TABLE Zespoly ADD liczba_podwladych NUMBER;
+/
+DECLARE 
+    CURSOR vUpdate IS
+    SELECT id_zesp FROM ZESPOLY;
+
+    vLiczba NUMBER;
+BEGIN
+    FOR cUpdate IN vUpdate LOOP
+        SELECT COUNT(*) INTO vLiczba
+        FROM PRACOWNICY WHERE cUpdate.id_zesp = id_zesp;
+        UPDATE Zespoly SET liczba_podwladych = vLiczba WHERE cUpdate.id_zesp = id_zesp;
+    END LOOP;
+END;
+/
+SELECT * FROM Zespoly;
+/
+CREATE OR REPLACE TRIGGER NaZespolach
+    AFTER INSERT OR DELETE OR UPDATE ON Pracownicy 
+    FOR EACH ROW
+DECLARE
+    vAliczba NUMBER;
+    vBliczba Number;
+BEGIN
+    CASE
+        WHEN INSERTING THEN
+            SELECT liczba_podwladych INTO vAliczba FROM Zespoly WHERE id_zesp = :NEW.id_zesp;
+            vAliczba := vAliczba +1;
+            UPDATE Zespoly SET liczba_podwladych = vAliczba WHERE id_zesp = :NEW.id_zesp;
+        WHEN DELETING THEN
+            SELECT liczba_podwladych INTO vAliczba FROM Zespoly WHERE id_zesp = :OLD.id_zesp;
+            vAliczba := vAliczba -1;
+            UPDATE Zespoly SET liczba_podwladych = vAliczba WHERE id_zesp = :OLD.id_zesp;
+        WHEN UPDATING THEN
+            SELECT liczba_podwladych INTO vAliczba FROM Zespoly WHERE id_zesp = :OLD.id_zesp;
+            SELECT liczba_podwladych INTO vBliczba FROM Zespoly WHERE id_zesp = :NEW.id_zesp;
+            vBliczba := vBliczba + vAliczba;
+            vAliczba := 0;
+            UPDATE Zespoly SET liczba_podwladych = vAliczba WHERE id_zesp = :OLD.id_zesp;
+            UPDATE Zespoly SET liczba_podwladych = vBliczba WHERE id_zesp = :NEW.id_zesp;
+    END CASE;
+END;
+/
+INSERT INTO Pracownicy(id_prac, nazwisko, id_zesp, id_szefa)
+ VALUES(320,'NOWY PRACOWNIK',40,120);
+ /
+ UPDATE Pracownicy SET id_zesp = 10 WHERE id_zesp = 30;
+
+--7.
+ALTER TABLE PRACOWNICY DROP CONSTRAINT FK_ID_SZEFA;
+/
+ALTER TABLE PRACOWNICY ADD CONSTRAINT FK_ID_SZEFA FOREIGN KEY (id_prac) REFERENCES Pracownicy(id_prac) ON DELETE CASCADE;
+/
+CREATE OR REPLACE TRIGGER Usun_Prac
+    AFTER DELETE ON Pracownicy
+    FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(:OLD.nazwisko);
+END;
+/
+SAVEPOINT BCD;
+SET SERVEROUTPUT ON;
+DELETE FROM Pracownicy WHERE nazwisko = 'MORZY';
+ROLLBACK WORK TO SAVEPOINT BCD;
+
+-- Alternatywa
+
+ALTER TABLE PRACOWNICY DROP CONSTRAINT FK_ID_SZEFA;
+/
+ALTER TABLE PRACOWNICY ADD CONSTRAINT FK_ID_SZEFA FOREIGN KEY (id_prac) REFERENCES Pracownicy(id_prac) ON DELETE CASCADE;
+/
+CREATE OR REPLACE TRIGGER Usun_Prac
+    BEFORE DELETE ON Pracownicy
+    FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(:OLD.nazwisko);
+END;
+/
+SAVEPOINT BCD;
+SET SERVEROUTPUT ON;
+DELETE FROM Pracownicy WHERE nazwisko = 'MORZY';
+ROLLBACK WORK TO SAVEPOINT BCD;
+
+--8.
+ALTER TABLE Pracownicy DISABLE ALL TRIGGERS;
+/
+SELECT * FROM User_Triggers WHERE table_name = 'PRACOWNICY';
+/
+SAVEPOINT CDE;
+DELETE FROM PRACOWNICY WHERE nazwisko = 'MORZY';
+ROLLBACK WORK TO SAVEPOINT CDE;
+/
+
+--9.
+SELECT * FROM User_Triggers WHERE table_name IN ('PRACOWNICY', 'Zespoly');
+/
+DROP TRIGGER NaZespolach;
+DROP TRIGGER PokazPlace;
+DROP TRIGGER PoPoleceniu;
+DROP TRIGGER Usun_Prac;
+DROP TRIGGER UzupelnijPlace;
+/
+SELECT * FROM User_Triggers WHERE table_name IN ('PRACOWNICY', 'Zespoly');

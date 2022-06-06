@@ -1,0 +1,192 @@
+-- 1.
+EXPLAIN PLAN FOR
+SELECT * FROM opt_pracownicy WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 2.
+EXPLAIN PLAN FOR
+SELECT /*+ FULL(opt_pracownicy) */ *
+FROM opt_pracownicy WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT --+ FULL(opt_pracownicy)
+* FROM opt_pracownicy WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 3.
+EXPLAIN PLAN FOR
+SELECT /*+ FULL(opt_pracownicy) */ *
+FROM opt_pracownicy p
+WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- wskazówka zostaje zignorowana
+
+EXPLAIN PLAN FOR
+SELECT /*+ FULL(p) */ *
+FROM opt_pracownicy p
+WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- zapytanie zostaje wykonane według wskazówki
+
+-- 4.
+EXPLAIN PLAN FOR
+SELECT /*+ NO_INDEX(opt_pracownicy) */ *
+FROM opt_pracownicy
+WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT /*+ NO_INDEX(opt_pracownicy opt_prac_pk) */ *
+FROM opt_pracownicy
+WHERE id_prac = 900;
+SELECT * FROM TABLE(dbms_xplan.display());
+-- otrzymano taki sam rezultat jak powyżej, ponieważ opt_prac_pk jest jedynym indeksem w relacji
+
+-- 5.
+EXPLAIN PLAN FOR
+SELECT nazwisko, etat FROM opt_pracownicy;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT /*+ INDEX(opt_pracownicy) */ nazwisko, etat
+FROM opt_pracownicy;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- eksperyment
+EXPLAIN PLAN FOR
+SELECT /*+ INDEX(opt_pracownicy opt_prac_id_zesp_idx) */ nazwisko, etat
+FROM opt_pracownicy;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- optylizator dokonuje pełnego przeglądu indeksu bitmapowego - zapytanie ma niższy koszt
+
+
+--6. 
+EXPLAIN PLAN FOR
+SELECT /*+ INDEX_COMBINE(opt_pracownicy) */ nazwisko, etat
+FROM opt_pracownicy;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- wykonując to zapytanie uzyskano rezultat jak wyżej w przykłądzie eksperymentalym
+
+-- 7.
+EXPLAIN PLAN FOR
+SELECT placa
+FROM opt_pracownicy
+WHERE plec = 'K';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT /*+ INDEX_FFS(opt_pracownicy) */ placa
+FROM opt_pracownicy
+WHERE plec = 'K';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 8.
+EXPLAIN PLAN FOR
+SELECT /*+ INDEX_FFS(opt_pracownicy) */ placa
+FROM opt_pracownicy
+WHERE plec = 'K';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 9.
+EXPLAIN PLAN FOR
+SELECT /*+ INDEX_JOIN(opt_pracownicy
+ opt_prac_pk opt_prac_nazw_placa_idx) */
+ nazwisko
+FROM opt_pracownicy
+WHERE id_prac < 1000 AND placa = 1500; 
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 10.
+EXPLAIN PLAN FOR
+SELECT /*+ NO_USE_HASH(p e) USE_NL(p z)*/ p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_pracownicy p JOIN opt_zespoly z USING(id_zesp)
+ JOIN opt_etaty e ON p.etat = e.nazwa; 
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 11.
+EXPLAIN PLAN FOR
+SELECT /*+ LEADING(p e) */
+ p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_pracownicy p JOIN opt_zespoly z USING(id_zesp)
+ JOIN opt_etaty e ON p.etat = e.nazwa; 
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 12.
+EXPLAIN PLAN FOR
+SELECT /*+ LEADING(z e) */
+ p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_pracownicy p JOIN opt_zespoly z USING(id_zesp)
+ JOIN opt_etaty e ON p.etat = e.nazwa; 
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- operacja łaczenia wykorzystuje cartesian merge join  
+-- oraz predykaty zostały połączone przy pomocy operatora AND
+
+-- 13.
+EXPLAIN PLAN FOR
+SELECT p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_pracownicy p JOIN opt_etaty e ON p.etat = e.nazwa
+JOIN opt_zespoly z USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT  /*+ ORDERED */ p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_pracownicy p JOIN opt_etaty e ON p.etat = e.nazwa
+JOIN opt_zespoly z USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 14. 
+EXPLAIN PLAN FOR
+SELECT  /*+ ORDERED */ p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_zespoly z, opt_etaty e, opt_pracownicy p WHERE p.etat = e.nazwa AND
+p.id_zesp = z.id_zesp;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 15.
+EXPLAIN PLAN FOR
+SELECT id_prac, id_zesp
+FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 16.
+EXPLAIN PLAN FOR
+SELECT nazwisko
+FROM opt_pracownicy
+WHERE id_zesp IN
+ (SELECT id_zesp FROM opt_zespoly WHERE nazwa = 'Bazy Danych');
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 17.
+EXPLAIN PLAN FOR
+SELECT nazwisko, srednia
+FROM opt_pracownicy JOIN
+ (SELECT AVG(placa) AS srednia, id_zesp FROM opt_pracownicy
+ GROUP BY id_zesp) z USING(id_zesp)
+WHERE placa > srednia;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT /*+ MERGE(z) */ nazwisko, srednia
+FROM opt_pracownicy JOIN
+ (SELECT AVG(placa) AS srednia, id_zesp FROM opt_pracownicy
+ GROUP BY id_zesp) z USING(id_zesp)
+WHERE placa > srednia;
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 18.
+EXPLAIN PLAN FOR
+SELECT /*+ NO_QUERY_TRANSFORMATION*/ id_prac, id_zesp
+FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+
+EXPLAIN PLAN FOR
+SELECT /*+ NO_QUERY_TRANSFORMATION*/nazwisko
+FROM opt_pracownicy
+WHERE id_zesp IN
+ (SELECT id_zesp FROM opt_zespoly WHERE nazwa = 'Bazy Danych');
+SELECT * FROM TABLE(dbms_xplan.display());

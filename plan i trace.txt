@@ -1,0 +1,103 @@
+-- Plany
+-- 1. 
+SELECT *
+FROM TABLE(dbms_xplan.display(
+ statement_id => 'zap_2_INF145342',
+ format => 'TYPICAL'));
+
+-- 2.
+SELECT *
+FROM TABLE(dbms_xplan.display(
+ statement_id => 'zap_2_INF145342',
+ format => 'ALL'));
+ 
+ -- 3.
+EXPLAIN PLAN 
+SET STATEMENT_ID = 'zap_3_INF145342' FOR
+SELECT etat, COUNT(*) FROM opt_pracownicy GROUP BY etat;
+ 
+SELECT *
+FROM TABLE(dbms_xplan.display(
+ statement_id => 'zap_3_INF145342'));
+ 
+ 
+ -- Autotrace
+ -- 1.
+SELECT /* MOJE_ZAPYTANIE_1_INF145342 */ *
+FROM opt_pracownicy WHERE placa = (SELECT MAX(placa) FROM opt_pracownicy);
+
+SELECT /* MOJE_ZAPYTANIE_2_INF145342 */ COUNT(*), AVG(placa), plec
+FROM opt_pracownicy GROUP BY plec;
+
+-- 2.
+SELECT sql_id as zapytanie1
+FROM v$sql
+WHERE sql_text LIKE '%MOJE_ZAPYTANIE_1_INF145342%';
+
+SELECT sql_id as zapytanie2
+FROM v$sql
+WHERE sql_text LIKE '%MOJE_ZAPYTANIE_2_INF145342%';
+
+-- 3.
+-- Zapytanie 1 
+SELECT *
+FROM TABLE(dbms_xplan.display_cursor(
+ sql_id => '0gwcx3xukr99v',
+ format => 'BASIC +ROWS +BYTES +PREDICATE'));
+
+SELECT *
+FROM TABLE(dbms_xplan.display_cursor(
+ sql_id => '0gwcx3xukr99v',
+ format => 'ALL -ALIAS'));
+
+ SELECT * FROM
+TABLE(dbms_xplan.display_cursor(sql_id=>'0gwcx3xukr99v',
+ format=>'IOSTATS ALL LAST'));
+ 
+SELECT * FROM
+TABLE(dbms_xplan.display_cursor(sql_id=>'0gwcx3xukr99v',
+ format=>'ALLSTATS LAST')); 
+ 
+ -- Zapytanie 2 
+SELECT *
+FROM TABLE(dbms_xplan.display_cursor(
+ sql_id => '2qsjp02br6bwn',
+ format => 'BASIC +ROWS +BYTES +PREDICATE'));
+
+SELECT *
+FROM TABLE(dbms_xplan.display_cursor(
+ sql_id => '2qsjp02br6bwn',
+ format => 'ALL -ALIAS'));
+
+ SELECT * FROM
+TABLE(dbms_xplan.display_cursor(sql_id=>'2qsjp02br6bwn',
+ format=>'IOSTATS ALL LAST'));
+ 
+SELECT * FROM
+TABLE(dbms_xplan.display_cursor(sql_id=>'2qsjp02br6bwn',
+ format=>'ALLSTATS LAST')); 
+ 
+-- 4.
+INSERT /* MOJE_WSTAWIANIE_1_INF145342 */ INTO opt_pracownicy(id_prac, nazwisko) VALUES(11111, '11111');
+
+DELETE /* MOJE_USUWANIE_1_INF145342 */ FROM opt_pracownicy WHERE nazwisko = '11111';
+
+-- 5.
+COMMIT;
+
+-- 6.
+SELECT sql_id as wstawianie1
+FROM v$sql
+WHERE sql_text LIKE '%MOJE_WSTAWIANIE_1_INF145342%';
+
+SELECT sql_id as usuwanie2
+FROM v$sql
+WHERE sql_text LIKE '%MOJE_USUWANIE_1_INF145342%';
+
+SELECT * FROM
+TABLE(dbms_xplan.display_cursor(sql_id=>'ftb57rtk9vvw7',
+ format=>'ALLSTATS LAST')); 
+ 
+SELECT * FROM
+TABLE(dbms_xplan.display_cursor(sql_id=>'gn0qtpgz448uu',
+ format=>'ALLSTATS LAST'));

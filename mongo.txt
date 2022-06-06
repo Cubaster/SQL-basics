@@ -1,0 +1,242 @@
+Tworzenie kolekcji i wstawianie dokumentów
+
+Zadanie 1
+db.pracownicy.find()
+
+format daty wygląda następująco:
+ISODate("1973-05-01T00:00:00Z")
+
+Utworzenie zbioru kolekcji
+
+zadanie 2.
+db.zespoly.insert([{"id_zesp":10,"nazwa":"ADMINISTRACJA","adres":"PIOTROWO 3A"},
+{"id_zesp":20,"nazwa":"SYSTEMY ROZPROSZONE","adres":"PIOTROWO 3A"},
+{"id_zesp":30,"nazwa":"SYSTEMY EKSPERCKIE","adres":"STRZELECKA 14"},
+{"id_zesp":40,"nazwa":"ALGORYTMY","adres":"WLODKOWICA 16"},
+{"id_zesp":50,"nazwa":"BADANIA OPERACYJNE","adres":"MIELZYNSKIEGO 30"}])
+
+Prosta selekcja
+
+Projekcja
+
+Zadanie 3.
+db.pracownicy.find({"etat":"PROFESOR"}, {"nazwisko":1, "_id":0})
+
+w przypadku wywołania powyższego polecenia zostały wyświetlone jedynie nazwiska
+
+db.pracownicy.find({"etat":"PROFESOR"}, {"nazwisko":0, "_id":0})
+
+w przypadku wywołania powyższego polecenia zostały wyświetlone wszystkie dane poza nazwiskiem i kluczem
+
+db.pracownicy.find({"etat":"PROFESOR"}, {"nazwisko":1, "placa_pod":0})
+
+Program wyświetlił komunikat błędu:
+"Cannot do exclusion on field placa_pod in inclusion projection"
+
+Operatory $and i $or
+
+zadanie 4
+
+db.pracownicy.find(
+{$or:[{"etat":"ASYSTENT"} ,{"placa_pod":{$gt:200, $lt:500}}]},
+{"_id":0,"nazwisko":1,"etat": 1, "placa_pod":1}
+)
+
+Sortowanie
+
+Zadanie 5
+
+db.pracownicy.find(
+{"placa_pod":{$gt:400}},
+{"_id":0, "nazwisko":1,"etat":1, "placa_pod":1}
+).sort(
+{"etat":1, "placa_pod":-1})
+
+Ograniczanie zbioru wyników
+
+Zadanie 6
+
+db.pracownicy.find(
+{"id_zesp": 20},
+{"_id":0, "nazwisko":1, "placa_pod":1}
+).sort(
+{"placa_pod":-1}
+).skip(1).limit(1)
+
+Wzorce
+
+Zadanie 7
+db.pracownicy.find(
+{"id_zesp":{$in:[20,30]}, "etat":{$ne:"ASYSTENT"}, "nazwisko":{$regex:"I$"}},
+{"_id":0, "nazwisko":1, "etat":1}
+)
+
+Mechanizm agregacji
+
+zadanie 8
+
+db.pracownicy.aggregate(
+[
+ {$project: { "_id":0, "stanowisko": "$etat", "nazwisko":1, "rok_zatrudnienia":{$year:"$zatrudniony"} }},
+ {$sort: { "placa_pod": -1} },
+ {$skip : 2},
+ {$limit: 1}
+])
+
+zadanie 9
+
+db.pracownicy.aggregate([
+ {$group:{
+ _id: "$id_zesp",
+ liczba: {$sum: 1}
+ }
+ },
+ {$sort:{"_id": 1}
+ },
+ {$match:
+     {
+         liczba: {$gt:3}
+     }
+ }
+])
+
+Połączenie danych z wielu kolekcji
+
+Zadanie 10
+
+db.pracownicy.aggregate([
+ { $lookup: {from: "zespoly",
+ localField: "id_zesp",
+ foreignField: "id_zesp",
+ as: "zespol_pracownika"}
+ },
+ {$match:
+    {
+      "id_zesp": {$in:[20,30]}
+    }
+},
+{ $project: {"_id": 0,
+ "nazwisko":1,
+ "dept": {$arrayElemAt:["$zespol_pracownika.adres",0]}
+ }
+}
+])
+
+Zadanie 11
+
+db.pracownicy.aggregate([
+ { $lookup: {from: "zespoly",
+ localField: "id_zesp",
+ foreignField: "id_zesp",
+ as: "zespol_pracownika"}
+ },
+ {
+   $match:{"zespol_pracownika.adres":{$regex:"STRZEL"}}  
+ },
+{ $project: { "_id": 0,
+ "id_prac":1,
+ "nazwisko":1,
+ "zespol": {$arrayElemAt:["$zespol_pracownika.nazwa",0]}
+ }
+}
+])
+
+
+zadanie 12 /TODO / jak wyświetlić nazwy - grupowaie coś psuje
+db.pracownicy.aggregate([
+ { $lookup: {from: "zespoly",
+ localField: "id_zesp",
+ foreignField: "id_zesp",
+ as: "zespol_pracownika"}
+ },
+ { 
+  $group: {
+      _id: "$zespol_pracownika",
+      liczba: {$sum: 1}}
+ },
+{$project:{ "_id": 0,
+ "liczba": 1,
+ "zespol": {$arrayElemAt:["$_id.nazwa",0]}
+ }
+}
+])
+
+Modyfikacja danych
+
+4. Zmianie uległa jedynie pierwsza wartość - pierwsza, która została dopasowana
+
+ 
+Zadanie 13
+
+var pracownicy = db.pracownicy.find();
+while (pracownicy.hasNext()) {
+    prac = pracownicy.next();
+    zesp = db.zespoly.findOne({"id_zesp": prac.id_zesp});
+    db.pracownicy.update({id_prac:prac.id_prac},{$set:{id_zesp:zesp._id}});
+}
+
+
+Zadanie 14
+
+db.produkty.find(
+    {"oceny.osoba": {"$nin": ["Ania", "Karol"]}},
+    {"_id": 0, "nazwa":1}
+)
+
+
+Zadanie 15
+
+db.produkty.aggregate([
+    {
+        $unwind : "$oceny"
+    },
+    {
+        $group: {
+            _id:"$nazwa",
+            srednia_ocena: {$avg: "$oceny.ocena"},
+        }
+    },
+    {
+        $sort: { srednia_ocena : -1 }
+    },
+    {
+        $limit: 1
+    },
+    {
+        $project: {
+            "produkt": "$_id",
+            "_id":0,
+            "srednia_ocena": 1
+        }
+    }
+])
+
+Zadanie 16
+
+db.produkty.update(
+    {"nazwa":"Kosiarka elektryczna"},
+    {$push:
+        {
+            oceny: {
+                "osoba": "Ania",
+                "ocena": 4.0
+            }
+        }
+    }
+)
+
+Zadanie 18
+db.produkty.update(
+    {},
+    {
+        $pull: {
+            "oceny": {
+                "ocena" : {$lt:3.1}
+            }
+        }
+    }
+)
+
+
+
+

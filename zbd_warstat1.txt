@@ -1,0 +1,135 @@
+1.
+DECLARE
+    vTekst VARCHAR(100) := 'Witaj, świecie!';
+    vLiczba NUMERIC(7, 3) := 1000.456;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(vTekst);
+    DBMS_OUTPUT.PUT_LINE(vLiczba);
+END;
+
+2.
+DECLARE
+    vTekst VARCHAR(100) := 'Witaj, świecie!'; 
+    vLiczba NUMERIC(7, 3) := 1000.456;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(vTekst || ' Witaj, nowy dniu!');
+    DBMS_OUTPUT.PUT_LINE(vLiczba + POWER(10,15));
+END;
+
+3.
+DECLARE
+    vLiczba NUMERIC(10,7)  := 10.2356000; 
+    vLiczba1 NUMERIC(10,7) := 0.0000001;
+    vSuma NUMERIC(10,7);
+BEGIN
+    vSuma := vLiczba + vLiczba1;
+    DBMS_OUTPUT.PUT_LINE('Wynik dodawania' || TO_CHAR(vLiczba, '90.0000000') || ' i' || TO_CHAR(vLiczba1, '0.0000000') || ': ' || vSuma);
+END;
+
+
+		   LUB	
+DECLARE
+    vLiczba FLOAT  := 10.2356000; 
+    vLiczba1 FLOAT := 0.0000001;
+    vSuma FLOAT;
+BEGIN
+    vSuma := vLiczba + vLiczba1;
+    DBMS_OUTPUT.PUT_LINE('Wynik dodawania' || TO_CHAR(vLiczba, '90.0000000') || ' i' || TO_CHAR(vLiczba1, '0.0000000') || ': ' || vSuma);
+END;
+
+4.
+DECLARE
+    vPromien NUMERIC(6,1) := 5; 
+    cPi CONSTANT NUMERIC(3,2):= 3.14;
+    vObwod NUMERIC(6,1);
+    vPole NUMERIC(6,1);
+BEGIN
+    vObwod := 2 * cPi * vPromien;
+    vPole := cPi * POWER(vPromien, 2);
+    DBMS_OUTPUT.PUT_LINE('Obwód koła o promieniu równym ' || vPromien || ': ' || vObwod);
+    DBMS_OUTPUT.PUT_LINE('Pole koła o promieniu równym ' || vPromien || ': ' || vPole);
+END;
+
+5.
+DECLARE
+    vNazwisko pracownicy.nazwisko%TYPE;
+    vEtat pracownicy.etat%TYPE;
+BEGIN
+    SELECT nazwisko, etat
+    INTO vNazwisko, vEtat
+    FROM pracownicy
+    WHERE placa_pod = (SELECT MAX(placa_pod) FROM pracownicy);
+    DBMS_OUTPUT.PUT_LINE('Najlepiej zarabia pracownik '|| vNazwisko || '.');
+    DBMS_OUTPUT.PUT_LINE('Pracuje on jako '|| vEtat || '.');
+END;
+
+6.
+DECLARE
+    TYPE tDane IS RECORD(
+        nazwisko VARCHAR(50),
+        etat Varchar(20)
+    );
+    vPracownik tDane;
+BEGIN
+    SELECT nazwisko, etat
+    INTO vPracownik
+    FROM pracownicy
+    WHERE placa_pod = (SELECT MAX(placa_pod) FROM pracownicy);
+    DBMS_OUTPUT.PUT_LINE('Najlepiej zarabia pracownik '|| vPracownik.nazwisko || '.');
+    DBMS_OUTPUT.PUT_LINE('Pracuje on jako '|| vPracownik.etat || '.');
+END;
+
+7.
+DECLARE
+    vNazwisko pracownicy.nazwisko%TYPE;
+    SUBTYPE tPieniadze IS NUMBER;
+    vZarobki tPieniadze;
+BEGIN
+    SELECT nazwisko, placa_pod * 12
+    INTO vNazwisko, vZarobki
+    FROM pracownicy
+    WHERE nazwisko = 'SLOWINSKI';
+    DBMS_OUTPUT.PUT_LINE('Pracownik '|| vNazwisko || 'zarabia rocznie ' || vZarobki);
+END;
+
+8.
+DECLARE
+    vSekundy INTEGER;
+BEGIN
+    SELECT TO_CHAR(EXTRACT( SECOND FROM CURRENT_TIMESTAMP)) INTO vSekundy FROM Dual;
+    WHILE vSekundy != 25 LOOP
+        SELECT TO_CHAR(EXTRACT( SECOND FROM CURRENT_TIMESTAMP)) INTO vSekundy FROM Dual;
+    END LOOP;
+    
+    DBMS_OUTPUT.PUT_LINE('Nadeszła ' || vSekundy || ' sekunda!');
+END;
+
+9.
+DECLARE
+    vSilnia INTEGER := 1;
+    vLicznik INTEGER := 10;
+BEGIN
+    WHILE vLicznik != 1 LOOP
+        vSilnia := vSilnia * vLicznik;
+        vLicznik := vLicznik - 1;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Silnia dla n=10: ' || vSilnia);
+END;
+
+10.
+DECLARE
+    vStartDate NUMBER;
+    vEndDate NUMBER;
+    vDay VARCHAR2(10);
+BEGIN
+    --j w funkcji to_char odwołuje się do numeru dnia w kalendarzu Juliańskim
+    vStartDate := TO_NUMBER(TO_CHAR(TO_DATE('2001-01-01', 'yyyy-mm-dd'), 'j'));
+    vEndDate := TO_NUMBER(TO_CHAR(TO_DATE('2100-12-31', 'yyyy-mm-dd'), 'j'));
+    FOR currDay IN vStartDate..vEndDate LOOP
+        IF TO_CHAR(TO_DATE(currDay, 'j'), 'dd DAY') LIKE '%13 PIĄTEK%' THEN
+            vDay := TO_CHAR(TO_DATE(currDay, 'j'),'yyyy-MM-dd');
+            DBMS_OUTPUT.PUT_LINE(vDay);
+        END IF;
+    END LOOP;
+END;

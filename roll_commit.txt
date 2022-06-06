@@ -1,0 +1,28 @@
+--DLL operations
+UPDATE Pracownicy SET etat='ADIUNKT' WHERE nazwisko='MATYSIAK';
+DELETE FROM Pracownicy WHERE etat='ASYSTENT';
+SELECT * FROM PRACOWNICY;
+ROLLBACK;
+SELECT * FROM PRACOWNICY;
+
+--DML operations
+SELECT * FROM Pracownicy WHERE etat = 'ADIUNKT';
+UPDATE Pracownicy SET placa_pod= placa_pod * 1.1 WHERE etat = 'ADIUNKT';
+SELECT * FROM Pracownicy WHERE etat = 'ADIUNKT';
+ALTER TABLE Pracownicy MODIFY placa_dod  NUMBER(7,2);
+ROLLBACK;
+-- nie doszło do zmian
+
+--Savepoint
+SELECT * FROM PRACOWNICY;
+UPDATE Pracownicy SET placa_dod = placa_dod + 200 WHERE nazwisko = 'MORZY';
+SAVEPOINT S1;
+SELECT * FROM PRACOWNICY;
+UPDATE Pracownicy SET placa_dod = placa_dod + 100 WHERE nazwisko = 'BIALY';
+SAVEPOINT S2;
+SELECT * FROM PRACOWNICY;
+DELETE FROM Pracownicy WHERE nazwisko=' JEZIERSKI';
+ROLLBACK TO SAVEPOINT S1;
+SELECT * FROM PRACOWNICY;
+ROLLBACK TO SAVEPOINT S2;
+ROLLBACK;

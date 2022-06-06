@@ -1,0 +1,419 @@
+--1.
+DECLARE
+    CURSOR cAsystenci(pEtat VARCHAR2) IS
+    SELECT nazwisko, TO_CHAR(zatrudniony, 'yyyy-mm-dd') AS zatrudniony
+    FROM pracownicy WHERE etat = pEtat
+    ORDER BY nazwisko;
+    
+    TYPE aDane IS RECORD(
+        vNazwisko pracownicy.nazwisko%TYPE,
+        vZatudniony pracownicy.zatrudniony%TYPE
+    );
+    vAsystenci aDane; 
+BEGIN
+    OPEN cAsystenci('ASYSTENT');
+    LOOP
+        FETCH cAsystenci INTO vAsystenci;
+        EXIT WHEN cAsystenci%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(vAsystenci.vNazwisko || ' pracuje od ' || vAsystenci.vZatudniony);
+    END LOOP;
+    CLOSE cAsystenci;
+END;
+
+--2.
+DECLARE 
+    CURSOR cZarabia IS
+    SELECT nazwisko
+    FROM pracownicy
+    ORDER BY placa_pod DESC;
+
+    TYPE nDane IS RECORD(
+        vNazwisko pracownicy.nazwisko%TYPE
+    );
+    vZarabia nDane; 
+
+BEGIN
+    OPEN cZarabia;
+    LOOP
+      FETCH cZarabia INTO vZarabia;
+      EXIT WHEN cZarabia%ROWCOUNT > 3;
+      DBMS_OUTPUT.PUT_LINE(cZarabia%ROWCOUNT || ' : ' || vZarabia.vNazwisko);
+    END LOOP;
+    CLOSE cZarabia;
+END;
+
+--3.
+SELECT nazwisko, placa_pod FROM pracownicy WHERE TO_CHAR(zatrudniony, 'Day') = 'Poniedziałek' ORDER BY nazwisko;
+/
+DECLARE
+    CURSOR cPracownicy IS
+    SELECT * 
+    FROM pracownicy
+    FOR UPDATE;
+
+    vPracownicy pracownicy%ROWTYPE;
+BEGIN
+    FOR vPracownicy IN cPracownicy LOOP
+        IF TO_CHAR(vPracownicy.zatrudniony, 'Day') = 'Poniedziałek' THEN
+        UPDATE pracownicy SET placa_pod = placa_pod * 1.2 WHERE CURRENT OF cPracownicy;
+        END IF;
+    END LOOP; 
+END;
+/
+SELECT nazwisko, placa_pod FROM pracownicy WHERE TO_CHAR(zatrudniony, 'Day') = 'Poniedziałek' ORDER BY nazwisko;
+/
+
+--4.
+SELECT * FROM pracownicy ORDER BY nazwisko;
+/
+DECLARE
+    CURSOR oPracownikach IS
+    SELECT * FROM pracownicy 
+    ORDER BY nazwisko
+    FOR UPDATE OF placa_dod;
+
+    cPracownicy pracownicy%ROWTYPE;
+    vNowaPlaca NUMBER;
+BEGIN
+    FOR cPracownicy IN oPracownikach LOOP
+        IF cPracownicy.id_zesp = 10 THEN
+            vNowaPlaca := COALESCE(cPracownicy.placa_dod, 0) + 150;
+            UPDATE pracownicy
+            SET placa_dod = vNowaPlaca
+            WHERE CURRENT OF oPracownikach;
+        ELSIF cPracownicy.id_zesp = 40 THEN
+            vNowaPlaca := COALESCE(cPracownicy.placa_dod, 0) + 100;
+            UPDATE pracownicy
+            SET placa_dod = vNowaPlaca 
+            WHERE CURRENT OF oPracownikach;
+        ELSIF cPracownicy.etat = 'STAZYSTA' THEN
+            DELETE FROM pracownicy
+            WHERE CURRENT OF oPracownikach; 
+        END IF;
+    END LOOP;
+END;
+/
+SELECT * FROM pracownicy ORDER BY nazwisko;
+/
+
+--5.
+CREATE OR REPLACE PROCEDURE PokazPracownikowEtatu(
+    vNazwaEtatu VARCHAR2
+)
+IS
+CURSOR cNazwiskaEtat(vEtat VARCHAR2) IS
+SELECT nazwisko 
+FROM pracownicy
+WHERE etat = vEtat
+ORDER BY nazwisko;
+
+BEGIN
+    FOR cNazwisko IN cNazwiskaEtat(vNazwaEtatu) LOOP
+        dbms_output.put_line(cNazwisko.nazwisko);
+    END LOOP;
+END;
+/
+EXEC PokazPracownikowEtatu('PROFESOR');
+/
+
+--6.
+CREATE OR REPLACE PROCEDURE RaportKadrowy IS 
+    CURSOR zEtat IS
+    SELECT nazwa
+    FROM etaty
+    ORDER BY nazwa;
+ 
+    CURSOR zPracownicy(pEtat VARCHAR2) IS 
+    SELECT nazwisko, placa_pod, placa_dod
+    FROM pracownicy 
+    WHERE etat = pEtat
+    ORDER BY nazwisko;
+
+    vLicznik NUMBER := 0;
+    vSuma NUMBER := 0;
+    vSrednia NUMBER := 0;
+    vPensja NUMBER := 0;
+BEGIN
+    FOR uEtat IN zEtat LOOP
+    dbms_output.put_line('Etat: ' || uEtat.nazwa);
+    dbms_output.put_line('-------------------------------------');
+        FOR uPracownik IN zPracownicy(uEtat.nazwa) LOOP
+            vLicznik := vLicznik +1;
+            vPensja := uPracownik.placa_pod + COALESCE(uPracownik.placa_dod, 0);
+            dbms_output.put_line(vLicznik || '. ' || uPracownik.nazwisko || ', pensja: ' || vPensja);
+            vSuma :=vSuma + vPensja;
+        END LOOP;
+        IF vLicznik > 0 THEN
+            dbms_output.put_line('Liczba pracowników: '|| vLicznik);
+            vSrednia:= vSuma / vLicznik;
+            dbms_output.put_line('Średnia pensja: '|| vSrednia);
+        ELSE
+            dbms_output.put_line('Średnia pensja: brak');
+        END IF;
+        vLicznik := 0;
+        vSuma := 0;
+        vSrednia := 0;
+        dbms_output.put_line('');
+    END LOOP;
+END;
+/
+EXEC RaportKadrowy;
+/
+
+--7.
+CREATE OR REPLACE PACKAGE IntZespoly IS
+    PROCEDURE DodajZespol(
+     vNazwa zespoly.nazwa%TYPE,
+     vAdres zespoly.adres%TYPE);
+
+    PROCEDURE UsunPoID(vId_zesp zespoly.id_zesp%TYPE);
+
+    PROCEDURE UsunPoNazwie(vNazwa zespoly.nazwa%TYPE);
+
+    PROCEDURE AktualizujPoID(vId_zesp zespoly.id_zesp%TYPE,
+    vNazwa zespoly.nazwa%TYPE,
+    vAdres zespoly.adres%TYPE);
+
+    FUNCTION PobierzIDpoNazwie(vNazwa zespoly.nazwa%TYPE) RETURN NUMBER;
+
+    FUNCTION PobierzNazwePoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2;
+
+    FUNCTION PobierzAdresPoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2;
+END IntZespoly;
+/
+
+
+CREATE OR REPLACE PACKAGE BODY IntZespoly IS
+    PROCEDURE DodajZespol(
+     vNazwa zespoly.nazwa%TYPE,
+     vAdres zespoly.adres%TYPE
+     ) IS
+    BEGIN
+        INSERT INTO zespoly(id_zesp, nazwa, adres)
+        VALUES((SELECT MAX(id_zesp) + 10 FROM zespoly), vNazwa, vAdres);
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Dodano nowy zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie dodano żadnego zespolu!');
+        END IF;
+    END DodajZespol;
+
+    PROCEDURE UsunPoID(vId_zesp zespoly.id_zesp%TYPE) IS
+    BEGIN
+        DELETE FROM zespoly WHERE id_zesp = vId_zesp;
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Usunieto zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie usunieto żadnego zespolu!');
+        END IF;
+    END UsunPoID;
+
+    PROCEDURE UsunPoNazwie(vNazwa zespoly.nazwa%TYPE) IS
+    BEGIN
+        DELETE FROM zespoly WHERE nazwa = vNazwa;
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Usunieto zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie usunieto żadnego zespolu!');
+        END IF;
+    END UsunPoNazwie;
+
+    PROCEDURE AktualizujPoID(vId_zesp zespoly.id_zesp%TYPE,
+    vNazwa zespoly.nazwa%TYPE,
+    vAdres zespoly.adres%TYPE) IS
+    BEGIN
+        UPDATE zespoly
+        SET nazwa = vNazwa, adres = vAdres
+        WHERE id_zesp = vId_zesp;
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Zmodyfikowano zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie zmodyfikowano żadnego zespolu!');
+        END IF;
+    END AktualizujPoID;
+
+    FUNCTION PobierzIDpoNazwie(vNazwa zespoly.nazwa%TYPE)
+    RETURN NUMBER IS
+    cId NUMBER;
+    BEGIN
+        SELECT id_zesp INTO cId FROM zespoly WHERE nazwa = vNazwa;
+        RETURN cId;
+    END PobierzIDpoNazwie;
+
+    FUNCTION PobierzNazwePoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2 IS
+    cNazwa VARCHAR2(40);
+    BEGIN
+        SELECT nazwa INTO cNazwa FROM zespoly WHERE id_zesp = vId_zesp;
+        RETURN cNazwa;
+    END PobierzNazwePoID;
+
+    FUNCTION PobierzAdresPoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2 IS
+    cAdres VARCHAR2(40);
+    BEGIN
+        SELECT adres INTO cAdres FROM zespoly WHERE id_zesp = vId_zesp;
+        RETURN cAdres;
+    END PobierzAdresPoID;
+END IntZespoly;
+/
+
+--8.
+CREATE OR REPLACE PACKAGE IntZespoly IS
+    PROCEDURE DodajZespol(
+     vNazwa zespoly.nazwa%TYPE,
+     vAdres zespoly.adres%TYPE);
+
+    PROCEDURE UsunPoID(vId_zesp zespoly.id_zesp%TYPE);
+
+    PROCEDURE UsunPoNazwie(vNazwa zespoly.nazwa%TYPE);
+
+    PROCEDURE AktualizujPoID(vId_zesp zespoly.id_zesp%TYPE,
+    vNazwa zespoly.nazwa%TYPE,
+    vAdres zespoly.adres%TYPE);
+
+    FUNCTION PobierzIDpoNazwie(vNazwa zespoly.nazwa%TYPE) RETURN NUMBER;
+
+    FUNCTION PobierzNazwePoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2;
+
+    FUNCTION PobierzAdresPoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2;
+    exBrakNazwy EXCEPTION;
+    exBrakIdentyfikatora EXCEPTION;
+    exPowielone EXCEPTION;
+END IntZespoly;
+/
+
+
+CREATE OR REPLACE PACKAGE BODY IntZespoly IS
+    PROCEDURE DodajZespol(
+     vNazwa zespoly.nazwa%TYPE,
+     vAdres zespoly.adres%TYPE
+     ) IS
+    BEGIN
+        INSERT INTO zespoly(id_zesp, nazwa, adres)
+        VALUES((SELECT MAX(id_zesp) + 10 FROM zespoly), vNazwa, vAdres);
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Dodano nowy zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie dodano żadnego zespolu!');
+        END IF;
+        EXCEPTION
+            WHEN DUP_VAL_ON_INDEX THEN
+            RAISE exPowielone;
+    END DodajZespol;
+
+    PROCEDURE UsunPoID(vId_zesp zespoly.id_zesp%TYPE) IS
+    BEGIN
+        DELETE FROM zespoly WHERE id_zesp = vId_zesp;
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Usunieto zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie usunieto żadnego zespolu!');
+        END IF;
+    END UsunPoID;
+
+    PROCEDURE UsunPoNazwie(vNazwa zespoly.nazwa%TYPE) IS
+    BEGIN
+        DELETE FROM zespoly WHERE nazwa = vNazwa;
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Usunieto zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie usunieto żadnego zespolu!');
+        END IF;
+    END UsunPoNazwie;
+
+    PROCEDURE AktualizujPoID(vId_zesp zespoly.id_zesp%TYPE,
+    vNazwa zespoly.nazwa%TYPE,
+    vAdres zespoly.adres%TYPE) IS
+    BEGIN
+        UPDATE zespoly
+        SET nazwa = vNazwa, adres = vAdres
+        WHERE id_zesp = vId_zesp;
+        IF SQL%FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Zmodyfikowano zespol');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Nie zmodyfikowano żadnego zespolu!');
+        END IF;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+            RAISE exBrakIdentyfikatora;
+    END AktualizujPoID;
+
+    FUNCTION PobierzIDpoNazwie(vNazwa zespoly.nazwa%TYPE)
+    RETURN NUMBER IS
+    cId NUMBER;
+    BEGIN
+        SELECT id_zesp INTO cId FROM zespoly WHERE nazwa = vNazwa;
+        RETURN cId;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+            RAISE exBrakNazwy;
+    END PobierzIDpoNazwie;
+
+    FUNCTION PobierzNazwePoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2 IS
+    cNazwa VARCHAR2(40);
+    BEGIN
+        SELECT nazwa INTO cNazwa FROM zespoly WHERE id_zesp = vId_zesp;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+            RAISE exBrakIdentyfikatora;
+        RETURN cNazwa;
+    END PobierzNazwePoID;
+
+    FUNCTION PobierzAdresPoID(vId_zesp zespoly.id_zesp%TYPE) RETURN VARCHAR2 IS
+    cAdres VARCHAR2(40);
+    BEGIN
+        SELECT adres INTO cAdres FROM zespoly WHERE id_zesp = vId_zesp;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+            RAISE exBrakIdentyfikatora;
+        RETURN cAdres;
+    END PobierzAdresPoID;
+END IntZespoly;
+/
+BEGIN
+   IntZespoly.DodajZespol('Mechaika', 'Piotrowo 8');
+
+   EXCEPTION
+    WHEN IntZespoly.exPowielone THEN
+        DBMS_OUTPUT.PUT_LINE('Powielono indeks!');
+END;
+/
+BEGIN
+   IntZespoly.AktualizujPoID(100, 'Robotyka', 'Polna');
+
+   EXCEPTION
+    WHEN IntZespoly.exBrakIdentyfikatora THEN
+        DBMS_OUTPUT.PUT_LINE('Identyfikator nie istnieje!');
+END;
+/
+DECLARE
+    vIle NUMBER;
+BEGIN
+   
+   vIle := IntZespoly.PobierzAdresPoID(100);
+
+   EXCEPTION
+    WHEN IntZespoly.exBrakIdentyfikatora THEN
+        DBMS_OUTPUT.PUT_LINE('Identyfikator nie istnieje!');
+END;
+
+DECLARE
+    vIle NUMBER;
+BEGIN
+   
+   vIle := IntZespoly.PobierzNazwePoID(100);
+
+   EXCEPTION
+    WHEN IntZespoly.exBrakIdentyfikatora THEN
+        DBMS_OUTPUT.PUT_LINE('Identyfikator nie istnieje!');
+END;
+/
+DECLARE
+    vIle NUMBER;
+BEGIN
+   
+   vIle := IntZespoly.PobierzIDpoNazwie('Grosik');
+
+   EXCEPTION
+    WHEN IntZespoly.exBrakNazwy THEN
+        DBMS_OUTPUT.PUT_LINE('Nazwa nie istnieje!');
+END;

@@ -1,0 +1,95 @@
+-- 1.
+EXPLAIN PLAN FOR
+SELECT * FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+-- kolejność relacji nie ma znaczenia algorytm optymalizuje zapytanie
+
+--2.
+EXPLAIN PLAN FOR
+SELECT * FROM opt_pracownicy RIGHT JOIN opt_zespoly USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+-- gdy jawnie wskazujemy kierunek łączenia relacji to zmienia się informacja w sekcji predykatów
+
+
+--3.
+ALTER TABLE opt_zespoly
+ ADD CONSTRAINT opt_zesp_pk PRIMARY KEY(id_zesp);
+
+ALTER TABLE opt_pracownicy ADD CONSTRAINT opt_prac_fk_oz_1
+ FOREIGN KEY(id_zesp) REFERENCES opt_zespoly(id_zesp);
+
+CREATE INDEX opt_prac_id_zesp_idx ON opt_pracownicy(id_zesp);
+
+BEGIN
+ DBMS_STATS.GATHER_TABLE_STATS(
+ ownname=>'INF145342', tabname => 'OPT_PRACOWNICY');
+ DBMS_STATS.GATHER_TABLE_STATS(
+ ownname=>'INF145342', tabname => 'OPT_ZESPOLY');
+END;
+
+--4.
+EXPLAIN PLAN FOR
+SELECT * FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp)
+WHERE nazwa = 'Bazy danych';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- uzyskany plan wskazuje iż wczytano mniej bajtów oraz został dodany predykat filtrujący
+
+-- 5.
+ALTER session SET optimizer_index_cost_adj = 20;
+
+-- 6.
+EXPLAIN PLAN FOR
+SELECT * FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp)
+WHERE nazwa = 'Bazy danych';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+ALTER session SET optimizer_index_cost_adj = 100;
+
+--7.
+EXPLAIN PLAN FOR
+SELECT p1.nazwisko, p2.nazwisko
+FROM opt_pracownicy p1 JOIN opt_pracownicy p2
+ON p1.placa > p2.placa
+WHERE p1.id_prac <> p2.id_prac AND p1.nazwisko LIKE 'Prac155%';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 8.
+EXPLAIN PLAN FOR
+SELECT COUNT(*)
+FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp)
+WHERE nazwa = 'Bazy danych';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- otrzymano informację o agregacji podczas sortowania
+
+CREATE BITMAP INDEX opt_prac_zesp_join_idx ON opt_pracownicy(nazwa)
+FROM opt_pracownicy p, opt_zespoly z WHERE p.id_zesp = z.id_zesp;
+
+EXPLAIN PLAN FOR
+SELECT COUNT(*)
+FROM opt_pracownicy JOIN opt_zespoly USING(id_zesp)
+WHERE nazwa = 'Bazy danych';
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- zapytanie zostało zmodyfikowane o wydukiwanie po indeksie bitmapowym
+
+-- 9.
+DROP INDEX opt_prac_zesp_join_idx;
+
+-- 10.
+EXPLAIN PLAN FOR
+SELECT p.nazwisko, z.nazwa, e.placa_min, e.placa_max
+FROM opt_pracownicy p JOIN opt_etaty e ON p.etat = e.nazwa
+ JOIN opt_zespoly z USING(id_zesp);
+SELECT * FROM TABLE(dbms_xplan.display());
+
+-- 11.
+EXPLAIN PLAN FOR
+SELECT p1.nazwisko, p2.nazwisko, z.nazwa
+FROM opt_pracownicy p1 JOIN opt_pracownicy p2
+ON p1.placa > p2.placa
+JOIN opt_zespoly z ON p1.id_zesp = z.id_zesp
+WHERE p1.id_prac <> p2.id_prac AND p1.nazwisko LIKE 'Prac155%'
+AND nazwa = 'Bazy danych';
+SELECT * FROM TABLE(dbms_xplan.display());
